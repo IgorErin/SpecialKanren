@@ -1,0 +1,4 @@
+(executable
+ (public_name SpecialKanren)
+ (name main)
+ (libraries SpecialKanren))
