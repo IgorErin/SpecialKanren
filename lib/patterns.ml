@@ -20,7 +20,27 @@ module Gen = struct
 
   let ( <|> ) = alt
   let drop = Pat (fun k _ -> k)
+  let list = drop
+  (* TODO *)
+  (* TODO (how to match list ???) *)
 end
+
+let expression (Pat desc') (Pat loc') (Pat extra') (Pat type') (Pat env')
+    (Pat attributes') =
+  Pat
+    (fun x k ->
+      let {
+        exp_desc : expression_desc;
+        exp_loc : Location.t;
+        exp_extra : (exp_extra * Location.t * attributes) list;
+        exp_type : Types.type_expr;
+        exp_env : Env.t;
+        exp_attributes : attributes;
+      } =
+        x
+      in
+      k |> desc' exp_desc |> loc' exp_loc |> extra' exp_extra |> type' exp_type
+      |> env' exp_env |> attributes' exp_attributes)
 
 (* type tructure_item_desc =
      Tstr_eval of expression * attributes
@@ -50,22 +70,18 @@ module Structure_item_desc = struct
   (* TODO (more patterns)*)
 end
 
-(*
-   and value_binding =
-     {
-       vb_pat: pattern;
-       vb_expr: expression;
-       vb_attributes: attributes;
-       vb_loc: Location.t; (TODO())
-     }
-*)
-let value_binding (Pat p) (Pat e) (Pat a) =
+let value_binding (Pat p) (Pat e) (Pat a) (Pat l) =
   Pat
     (fun x k ->
-      let { vb_pat = pat; vb_expr = expr; vb_attributes = atr; vb_loc = _ } =
+      let {
+        vb_pat : pattern;
+        vb_expr : expression;
+        vb_attributes : attributes;
+        vb_loc : Location.t;
+      } =
         x
       in
-      k |> p pat |> e expr |> a atr)
+      k |> p vb_pat |> e vb_expr |> a vb_attributes |> l vb_loc)
 
 (*
    type pattern = value general_pattern
@@ -93,7 +109,21 @@ module Pattern_desc = struct
         | _ -> fail ())
 end
 
+module Partial = struct
+  let partial = Pat (fun x k -> match x with Partial -> k | _ -> fail ())
+  let total = Pat (fun x k -> match x with Total -> k | _ -> fail ())
+end
+
 module Expression_desc = struct
+  let texp_ident (Pat path') (Pat loc') (Pat t_vd') =
+    (* TODO (type patterns too in t_vd) *)
+    Pat
+      (fun x k ->
+        match x with
+        | Texp_ident (path, loc, t_vd) ->
+            k |> path' path |> loc' loc |> t_vd' t_vd
+        | _ -> fail ())
+
   let texp_function (Pat arg') (Pat param') (Pat cases') (Pat partial') =
     Pat
       (fun x k ->
@@ -101,5 +131,51 @@ module Expression_desc = struct
         | Texp_function { arg_label; param; cases; partial } ->
             k |> arg' arg_label |> param' param |> cases' cases
             |> partial' partial
+        | _ -> fail ())
+
+  let texp_apply (Pat e') (Pat xs') =
+    Pat
+      (fun x k ->
+        match x with Texp_apply (e, xs) -> k |> e' e |> xs' xs | _ -> fail ())
+
+  let texp_construct (Pat loc') (Pat cons_desc') (Pat expl') =
+    (* TODO (Types.constructor_description in cons_desc)*)
+    Pat
+      (fun x k ->
+        match x with
+        | Texp_construct (loc, cons_des, expl) ->
+            k |> loc' loc |> cons_desc' cons_des |> expl' expl
+        | _ -> fail ())
+end
+
+let case (Pat first) (Pat second) (Pat third) =
+  Pat
+    (fun x k ->
+      let {
+        c_lhs : 'k general_pattern;
+        c_guard : expression option;
+        c_rhs : expression;
+      } =
+        x
+      in
+      k |> first c_lhs |> second c_guard |> third c_rhs)
+
+module Arg_lable = struct
+  (* Asttypes module *)
+  let noLable =
+    Pat (fun x k -> match x with Asttypes.Nolabel -> k | _ -> fail ())
+
+  let labelled (Pat label') =
+    Pat
+      (fun x k ->
+        match x with
+        | Asttypes.Labelled label -> k |> label' label
+        | _ -> fail ())
+
+  let optional (Pat label') =
+    Pat
+      (fun x k ->
+        match x with
+        | Asttypes.Optional label -> k |> label' label
         | _ -> fail ())
 end
