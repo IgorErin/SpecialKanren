@@ -1,0 +1,6 @@
+(executable
+ (name nat)
+ (modules nat)
+ (libraries OCanren)
+ (flags
+  (:standard -rectypes)))
