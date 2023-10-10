@@ -3,4 +3,4 @@
  (modules nat)
  (libraries OCanren)
  (flags
-  (:standard -rectypes)))
+  (:standard -rectypes -dtypedtree)))
