@@ -1,13 +1,13 @@
 type ('a, 'b, 'c) pat = Pat of ('a -> 'b -> 'c)
-type reason = Fail
+type reason = Fail of string
 
 exception Expected of reason
 
-let fail () = raise @@ Expected Fail
+let fail str = raise @@ Expected (Fail str)
 let __ = Pat (fun x k -> k x)
 
 let parse (Pat f : ('a, 'b, 'c) pat) (x : 'a) (k : 'b) (on_error : unit -> 'c) =
-  try f x k with Expected Fail -> on_error ()
+  try f x k with Expected (Fail "parse") -> on_error ()
 
 open Typedtree
 
@@ -16,7 +16,7 @@ module Gen = struct
     Pat
       (fun x k ->
         try first x k
-        with Expected Fail -> ( try second x k with Expected Fail -> fail ()))
+        with Expected Fail _ -> ( try second x k with Expected Fail _ -> fail "alt"))
 
   let ( <|> ) = alt
   let drop = Pat (fun k _ -> k)
@@ -25,10 +25,10 @@ module Gen = struct
   let lscons (Pat hd') (Pat tl') =
     Pat
       (fun x k ->
-        match x with hd :: tl -> k |> hd' hd |> tl' tl | _ -> fail ())
+        match x with hd :: tl -> k |> hd' hd |> tl' tl | _ -> fail "list cons")
 
   let ( <::> ) = lscons
-  let lsnil = Pat (fun x k -> match x with [] -> k | _ -> fail ())
+  let lsnil = Pat (fun x k -> match x with [] -> k | _ -> fail "list nil")
 end
 
 let expression (Pat desc') (Pat loc') (Pat extra') (Pat type') (Pat env')
@@ -71,7 +71,7 @@ module Structure_item_desc = struct
         match x with
         | Tstr_value (rec_flag, value_bindings) ->
             k |> first rec_flag |> second value_bindings
-        | _ -> fail ())
+        | _ -> fail "Structure_item_desc.Tstr_value")
 
   (* TODO (more patterns)*)
 end
@@ -112,12 +112,12 @@ module Pattern_desc = struct
         match x with
         | Tpat_var (ident_value, loc_value) ->
             k |> ident ident_value |> loc loc_value
-        | _ -> fail ())
+        | _ -> fail "Pattern_desc.Tpat_var")
 end
 
 module Partial = struct
-  let partial = Pat (fun x k -> match x with Partial -> k | _ -> fail ())
-  let total = Pat (fun x k -> match x with Total -> k | _ -> fail ())
+  let partial = Pat (fun x k -> match x with Partial -> k | _ -> fail "Partial.partial")
+  let total = Pat (fun x k -> match x with Total -> k | _ -> fail "Partial.total")
 end
 
 module Expression_desc = struct
@@ -128,7 +128,7 @@ module Expression_desc = struct
         match x with
         | Texp_ident (path, loc, t_vd) ->
             k |> path' path |> loc' loc |> t_vd' t_vd
-        | _ -> fail ())
+        | _ -> fail "Expression_desc.Texp_ident")
 
   let texp_function (Pat arg') (Pat param') (Pat cases') (Pat partial') =
     Pat
@@ -137,12 +137,12 @@ module Expression_desc = struct
         | Texp_function { arg_label; param; cases; partial } ->
             k |> arg' arg_label |> param' param |> cases' cases
             |> partial' partial
-        | _ -> fail ())
+        | _ -> fail "Expression_desc.Texp_function")
 
   let texp_apply (Pat e') (Pat xs') =
     Pat
       (fun x k ->
-        match x with Texp_apply (e, xs) -> k |> e' e |> xs' xs | _ -> fail ())
+        match x with Texp_apply (e, xs) -> k |> e' e |> xs' xs | _ -> fail "Expression_desc.Texp_apply")
 
   let texp_construct (Pat loc') (Pat cons_desc') (Pat expl') =
     (* TODO (Types.constructor_description in cons_desc)*)
@@ -151,7 +151,7 @@ module Expression_desc = struct
         match x with
         | Texp_construct (loc, cons_des, expl) ->
             k |> loc' loc |> cons_desc' cons_des |> expl' expl
-        | _ -> fail ())
+        | _ -> fail "Expression_desc.Texp_construct")
 end
 
 let case (Pat first) (Pat second) (Pat third) =
@@ -169,19 +169,38 @@ let case (Pat first) (Pat second) (Pat third) =
 module Arg_lable = struct
   (* Asttypes module *)
   let noLable =
-    Pat (fun x k -> match x with Asttypes.Nolabel -> k | _ -> fail ())
+    Pat (fun x k -> match x with Asttypes.Nolabel -> k | _ -> fail "Arg_lable.NoLable")
 
   let labelled (Pat label') =
     Pat
       (fun x k ->
         match x with
         | Asttypes.Labelled label -> k |> label' label
-        | _ -> fail ())
+        | _ -> fail "Arg_lable.Labelled")
 
   let optional (Pat label') =
     Pat
       (fun x k ->
         match x with
         | Asttypes.Optional label -> k |> label' label
-        | _ -> fail ())
+        | _ -> fail "Arg_lable.Optional")
+end
+
+module Path = struct
+  let pident (Pat ident') =
+    Pat (fun x k -> match x with Path.Pident x -> ident' x k | _ -> fail "Path.Pident")
+
+  let pdot (Pat path') (Pat str') =
+    Pat
+      (fun x k ->
+        match x with
+        | Path.Pdot (path, str) -> k |> path' path |> str' str
+        | _ -> fail "Path.Pdot")
+
+  let papply (Pat left') (Pat right') = 
+    Pat (fun x k -> 
+      match x with 
+      | Path.Papply (left, right) ->
+        k |> left' left |> right' right
+      | _ -> fail "Path.Papply")
 end
