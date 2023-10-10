@@ -20,9 +20,15 @@ module Gen = struct
 
   let ( <|> ) = alt
   let drop = Pat (fun k _ -> k)
-  let list = drop
-  (* TODO *)
-  (* TODO (how to match list ???) *)
+  let ( >< ) = drop
+
+  let lscons (Pat hd') (Pat tl') =
+    Pat
+      (fun x k ->
+        match x with hd :: tl -> k |> hd' hd |> tl' tl | _ -> fail ())
+
+  let ( <::> ) = lscons
+  let lsnil = Pat (fun x k -> match x with [] -> k | _ -> fail ())
 end
 
 let expression (Pat desc') (Pat loc') (Pat extra') (Pat type') (Pat env')
