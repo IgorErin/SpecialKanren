@@ -2,7 +2,7 @@ open SpecialKanren
 
 let anon_fun = SpecialKanren.Config.set_path
 let message = ""
-let options = [ ]
+let options = []
 let config = SpecialKanren.Config.default
 let () = Arg.parse options anon_fun message
 
@@ -16,7 +16,7 @@ let read_cmt_impl path =
     infos.Cmt_format.cmt_annots
     |> function
     | Cmt_format.Implementation cmt ->
-      if Config.verbose () then Printf.printf "Reading cmt file %s \n%!" path ;
+      if Config.verbose () then Printf.printf "Reading cmt file %s \n%!" path;
       cmt
     | _ -> failwith "Implementation expected")
   else failwith "File does not exist"

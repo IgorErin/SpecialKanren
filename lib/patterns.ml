@@ -4,16 +4,18 @@ type reason = Fail of string
 exception Expected of reason
 
 let fail str = raise @@ Expected (Fail str)
-let __ = Pat (fun x k -> k x)
 
-let parse (Pat f : ('a, 'b, 'c) pat) (x : 'a) (k : 'b) (on_error : unit -> 'c) =
+let parse (Pat f : ('a, 'b, 'c) pat) (x : 'a) (k : 'b) (on_error : _ -> 'c) =
   try f x k with
-  | Expected (Fail "parse") -> on_error ()
+  | Expected (Fail msg) -> on_error msg
 ;;
 
 open Typedtree
 
 module Gen = struct
+  let var = Pat (fun x k -> k x)
+  let __ = var
+
   let alt (Pat first) (Pat second) =
     Pat
       (fun x k ->
@@ -44,6 +46,20 @@ module Gen = struct
         | [] -> k
         | _ -> fail "list nil")
   ;;
+
+  let list xs eq =
+    Pat
+      (fun x k ->
+        if List.length x = List.length xs
+        then (
+          let is_euqal = List.map2 eq x xs |> List.fold_left Bool.( && ) true in
+          if is_euqal then k else fail "list: doesnt equal")
+        else fail "list: lists have different lengths")
+  ;;
+
+  let get f = Pat (fun x k -> f x; k)
+
+  let str s = Pat (fun x k -> if String.equal x s then k else fail "String")
 end
 
 let expression
@@ -248,11 +264,22 @@ module Arg_lable = struct
 end
 
 module Path = struct
-  let pident (Pat ident') =
+  let extract path =
+    let rec loop acc = function
+      | Path.Pident x -> Ident.name x :: acc
+      | Path.Pdot (next, x) ->
+        let acc = x :: acc in
+        loop acc next
+      | Path.Papply _ -> failwith "Try to extract path from apply"
+    in
+    loop [] path
+  ;;
+
+  let pident (Pat str) =
     Pat
       (fun x k ->
         match x with
-        | Path.Pident x -> ident' x k
+        | Path.Pident x -> str (Ident.name x) k
         | _ -> fail "Path.Pident")
   ;;
 
@@ -270,6 +297,13 @@ module Path = struct
         match x with
         | Path.Papply (left, right) -> k |> left' left |> right' right
         | _ -> fail "Path.Papply")
+  ;;
+
+  let match' (Pat fxs) =
+    Pat
+      (fun x k ->
+        let path = extract x in
+        fxs path k)
   ;;
 end
 
