@@ -1,2 +1,4 @@
-version=0.26.0
-profile=default
+profile=janestreet
+sequence-style = terminator
+field-space=loose
+max-indent=2

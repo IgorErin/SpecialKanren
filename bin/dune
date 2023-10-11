@@ -1,4 +1,6 @@
 (executable
  (public_name SpecialKanren)
+ (flags
+  (:standard -w -32))
  (name main)
  (libraries SpecialKanren))

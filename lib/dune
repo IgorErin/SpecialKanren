@@ -1,6 +1,4 @@
 (library
  (libraries base compiler-libs.common)
- (inline_tests)
- (preprocess
-  (pps ppx_inline_test))
+ (modules Patterns Translator Config)
  (name SpecialKanren))

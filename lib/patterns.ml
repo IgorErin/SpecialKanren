@@ -7,7 +7,9 @@ let fail str = raise @@ Expected (Fail str)
 let __ = Pat (fun x k -> k x)
 
 let parse (Pat f : ('a, 'b, 'c) pat) (x : 'a) (k : 'b) (on_error : unit -> 'c) =
-  try f x k with Expected (Fail "parse") -> on_error ()
+  try f x k with
+  | Expected (Fail "parse") -> on_error ()
+;;
 
 open Typedtree
 
@@ -15,8 +17,11 @@ module Gen = struct
   let alt (Pat first) (Pat second) =
     Pat
       (fun x k ->
-        try first x k
-        with Expected Fail _ -> ( try second x k with Expected Fail _ -> fail "alt"))
+        try first x k with
+        | Expected (Fail _) ->
+          (try second x k with
+           | Expected (Fail _) -> fail "alt"))
+  ;;
 
   let ( <|> ) = alt
   let drop = Pat (fun k _ -> k)
@@ -25,31 +30,53 @@ module Gen = struct
   let lscons (Pat hd') (Pat tl') =
     Pat
       (fun x k ->
-        match x with hd :: tl -> k |> hd' hd |> tl' tl | _ -> fail "list cons")
+        match x with
+        | hd :: tl -> k |> hd' hd |> tl' tl
+        | _ -> fail "list cons")
+  ;;
 
   let ( <::> ) = lscons
-  let lsnil = Pat (fun x k -> match x with [] -> k | _ -> fail "list nil")
+
+  let lsnil =
+    Pat
+      (fun x k ->
+        match x with
+        | [] -> k
+        | _ -> fail "list nil")
+  ;;
 end
 
-let expression (Pat desc') (Pat loc') (Pat extra') (Pat type') (Pat env')
-    (Pat attributes') =
+let expression
+  (Pat desc')
+  (Pat loc')
+  (Pat extra')
+  (Pat type')
+  (Pat env')
+  (Pat attributes')
+  =
   Pat
     (fun x k ->
-      let {
-        exp_desc : expression_desc;
-        exp_loc : Location.t;
-        exp_extra : (exp_extra * Location.t * attributes) list;
-        exp_type : Types.type_expr;
-        exp_env : Env.t;
-        exp_attributes : attributes;
-      } =
+      let { exp_desc : expression_desc
+          ; exp_loc : Location.t
+          ; exp_extra : (exp_extra * Location.t * attributes) list
+          ; exp_type : Types.type_expr
+          ; exp_env : Env.t
+          ; exp_attributes : attributes
+          }
+        =
         x
       in
-      k |> desc' exp_desc |> loc' exp_loc |> extra' exp_extra |> type' exp_type
-      |> env' exp_env |> attributes' exp_attributes)
+      k
+      |> desc' exp_desc
+      |> loc' exp_loc
+      |> extra' exp_extra
+      |> type' exp_type
+      |> env' exp_env
+      |> attributes' exp_attributes)
+;;
 
 (* type tructure_item_desc =
-     Tstr_eval of expression * attributes
+   Tstr_eval of expression * attributes
    | Tstr_value of rec_flag * value_binding list // Done
    | Tstr_primitive of value_description
    | Tstr_type of rec_flag * type_declaration list
@@ -70,8 +97,17 @@ module Structure_item_desc = struct
       (fun x k ->
         match x with
         | Tstr_value (rec_flag, value_bindings) ->
-            k |> first rec_flag |> second value_bindings
+          k |> first rec_flag |> second value_bindings
         | _ -> fail "Structure_item_desc.Tstr_value")
+  ;;
+
+  let tstr_open (Pat dec) =
+    Pat
+      (fun x k ->
+        match x with
+        | Tstr_open x -> dec x k
+        | _ -> fail "Structure_item_desc.Tstr_open")
+  ;;
 
   (* TODO (more patterns)*)
 end
@@ -79,15 +115,16 @@ end
 let value_binding (Pat p) (Pat e) (Pat a) (Pat l) =
   Pat
     (fun x k ->
-      let {
-        vb_pat : pattern;
-        vb_expr : expression;
-        vb_attributes : attributes;
-        vb_loc : Location.t;
-      } =
+      let { vb_pat : pattern
+          ; vb_expr : expression
+          ; vb_attributes : attributes
+          ; vb_loc : Location.t
+          }
+        =
         x
       in
       k |> p vb_pat |> e vb_expr |> a vb_attributes |> l vb_loc)
+;;
 
 (*
    type pattern = value general_pattern
@@ -95,29 +132,45 @@ let value_binding (Pat p) (Pat e) (Pat a) (Pat l) =
    Note: type value = Value_pattern
 *)
 
-let pattern_data (Pat desc) (Pat loc) (Pat extra) (Pat type') (Pat env)
-    (Pat attributes) =
+let pattern_data (Pat desc) (Pat loc) (Pat extra) (Pat type') (Pat env) (Pat attributes) =
   Pat
     (fun x k ->
-      let { pat_desc; pat_loc; pat_extra; pat_type; pat_env; pat_attributes } =
-        x
-      in
-      k |> desc pat_desc |> loc pat_loc |> extra pat_extra |> type' pat_type
-      |> env pat_env |> attributes pat_attributes)
+      let { pat_desc; pat_loc; pat_extra; pat_type; pat_env; pat_attributes } = x in
+      k
+      |> desc pat_desc
+      |> loc pat_loc
+      |> extra pat_extra
+      |> type' pat_type
+      |> env pat_env
+      |> attributes pat_attributes)
+;;
 
 module Pattern_desc = struct
   let tpat_var (Pat ident) (Pat loc) =
     Pat
       (fun x k ->
         match x with
-        | Tpat_var (ident_value, loc_value) ->
-            k |> ident ident_value |> loc loc_value
+        | Tpat_var (ident_value, loc_value) -> k |> ident ident_value |> loc loc_value
         | _ -> fail "Pattern_desc.Tpat_var")
+  ;;
 end
 
 module Partial = struct
-  let partial = Pat (fun x k -> match x with Partial -> k | _ -> fail "Partial.partial")
-  let total = Pat (fun x k -> match x with Total -> k | _ -> fail "Partial.total")
+  let partial =
+    Pat
+      (fun x k ->
+        match x with
+        | Partial -> k
+        | _ -> fail "Partial.partial")
+  ;;
+
+  let total =
+    Pat
+      (fun x k ->
+        match x with
+        | Total -> k
+        | _ -> fail "Partial.total")
+  ;;
 end
 
 module Expression_desc = struct
@@ -126,23 +179,26 @@ module Expression_desc = struct
     Pat
       (fun x k ->
         match x with
-        | Texp_ident (path, loc, t_vd) ->
-            k |> path' path |> loc' loc |> t_vd' t_vd
+        | Texp_ident (path, loc, t_vd) -> k |> path' path |> loc' loc |> t_vd' t_vd
         | _ -> fail "Expression_desc.Texp_ident")
+  ;;
 
   let texp_function (Pat arg') (Pat param') (Pat cases') (Pat partial') =
     Pat
       (fun x k ->
         match x with
         | Texp_function { arg_label; param; cases; partial } ->
-            k |> arg' arg_label |> param' param |> cases' cases
-            |> partial' partial
+          k |> arg' arg_label |> param' param |> cases' cases |> partial' partial
         | _ -> fail "Expression_desc.Texp_function")
+  ;;
 
   let texp_apply (Pat e') (Pat xs') =
     Pat
       (fun x k ->
-        match x with Texp_apply (e, xs) -> k |> e' e |> xs' xs | _ -> fail "Expression_desc.Texp_apply")
+        match x with
+        | Texp_apply (e, xs) -> k |> e' e |> xs' xs
+        | _ -> fail "Expression_desc.Texp_apply")
+  ;;
 
   let texp_construct (Pat loc') (Pat cons_desc') (Pat expl') =
     (* TODO (Types.constructor_description in cons_desc)*)
@@ -150,26 +206,29 @@ module Expression_desc = struct
       (fun x k ->
         match x with
         | Texp_construct (loc, cons_des, expl) ->
-            k |> loc' loc |> cons_desc' cons_des |> expl' expl
+          k |> loc' loc |> cons_desc' cons_des |> expl' expl
         | _ -> fail "Expression_desc.Texp_construct")
+  ;;
 end
 
 let case (Pat first) (Pat second) (Pat third) =
   Pat
     (fun x k ->
-      let {
-        c_lhs : 'k general_pattern;
-        c_guard : expression option;
-        c_rhs : expression;
-      } =
+      let { c_lhs : _ general_pattern; c_guard : expression option; c_rhs : expression } =
         x
       in
       k |> first c_lhs |> second c_guard |> third c_rhs)
+;;
 
 module Arg_lable = struct
   (* Asttypes module *)
   let noLable =
-    Pat (fun x k -> match x with Asttypes.Nolabel -> k | _ -> fail "Arg_lable.NoLable")
+    Pat
+      (fun x k ->
+        match x with
+        | Asttypes.Nolabel -> k
+        | _ -> fail "Arg_lable.NoLable")
+  ;;
 
   let labelled (Pat label') =
     Pat
@@ -177,6 +236,7 @@ module Arg_lable = struct
         match x with
         | Asttypes.Labelled label -> k |> label' label
         | _ -> fail "Arg_lable.Labelled")
+  ;;
 
   let optional (Pat label') =
     Pat
@@ -184,11 +244,17 @@ module Arg_lable = struct
         match x with
         | Asttypes.Optional label -> k |> label' label
         | _ -> fail "Arg_lable.Optional")
+  ;;
 end
 
 module Path = struct
   let pident (Pat ident') =
-    Pat (fun x k -> match x with Path.Pident x -> ident' x k | _ -> fail "Path.Pident")
+    Pat
+      (fun x k ->
+        match x with
+        | Path.Pident x -> ident' x k
+        | _ -> fail "Path.Pident")
+  ;;
 
   let pdot (Pat path') (Pat str') =
     Pat
@@ -196,11 +262,99 @@ module Path = struct
         match x with
         | Path.Pdot (path, str) -> k |> path' path |> str' str
         | _ -> fail "Path.Pdot")
+  ;;
 
-  let papply (Pat left') (Pat right') = 
-    Pat (fun x k -> 
-      match x with 
-      | Path.Papply (left, right) ->
-        k |> left' left |> right' right
-      | _ -> fail "Path.Papply")
+  let papply (Pat left') (Pat right') =
+    Pat
+      (fun x k ->
+        match x with
+        | Path.Papply (left, right) -> k |> left' left |> right' right
+        | _ -> fail "Path.Papply")
+  ;;
 end
+
+let structuere_item (Pat desc) (Pat loc) (Pat env) =
+  Pat
+    (fun x k ->
+      let { str_desc : structure_item_desc; str_loc : Location.t; str_env : Env.t } = x in
+      k |> desc str_desc |> loc str_loc |> env str_env)
+;;
+
+let open_infos
+  (Pat expr)
+  (Pat bound_items)
+  (Pat override)
+  (Pat env)
+  (Pat loc)
+  (Pat attributes)
+  =
+  Pat
+    (fun x k ->
+      let { open_expr
+          ; open_bound_items : Types.signature
+          ; open_override : Asttypes.override_flag
+          ; open_env : Env.t
+          ; open_loc : Location.t
+          ; open_attributes : attribute list
+          }
+        =
+        x
+      in
+      k
+      |> expr open_expr
+      |> bound_items open_bound_items
+      |> override open_override
+      |> env open_env
+      |> loc open_loc
+      |> attributes open_attributes)
+;;
+
+let module_expr (Pat desc) (Pat loc) (Pat type') (Pat env) (Pat attributes) =
+  Pat
+    (fun x k ->
+      let { mod_desc : module_expr_desc
+          ; mod_loc : Location.t
+          ; mod_type : Types.module_type
+          ; mod_env : Env.t
+          ; mod_attributes : attributes
+          }
+        =
+        x
+      in
+      k
+      |> desc mod_desc
+      |> loc mod_loc
+      |> type' mod_type
+      |> env mod_env
+      |> attributes mod_attributes)
+;;
+
+module Module_expr_desc = struct
+  let tmod_ident (Pat path') (Pat ident') =
+    Pat
+      (fun x k ->
+        match x with
+        | Tmod_ident (path, ident) -> k |> path' path |> ident' ident
+        | _ -> fail "Module_expr_desc.Tmod_ident")
+  ;;
+end
+
+let structure (Pat items) (Pat type') (Pat env) =
+  Pat
+    (fun x k ->
+      let { str_items : structure_item list
+          ; str_type : Types.signature
+          ; str_final_env : Env.t
+          }
+        =
+        x
+      in
+      k |> items str_items |> type' str_type |> env str_final_env)
+;;
+
+let structure_item (Pat decs) (Pat loc) (Pat env) =
+  Pat
+    (fun x k ->
+      let { str_desc : structure_item_desc; str_loc : Location.t; str_env : Env.t } = x in
+      k |> decs str_desc |> loc str_loc |> env str_env)
+;;
