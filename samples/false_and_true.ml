@@ -1,4 +1,4 @@
 open OCanren
-open OCanren.Std 
+open OCanren.Std
 
-let false_and_true x = (x === Bool.truo) &&& (x === Bool.falso)
+let false_and_true x = x === Bool.truo &&& (x === Bool.falso)

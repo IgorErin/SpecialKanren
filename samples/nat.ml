@@ -9,4 +9,3 @@ let rec le x y is =
     ; Fresh.two (fun x' y' -> x === succ x' &&& (y === succ y') &&& le x' y' is)
     ]
 ;;
-

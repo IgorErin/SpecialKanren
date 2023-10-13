@@ -1,3 +1,3 @@
 open OCanren
 
-let neq x y = x =/= y 
+let neq x y = x =/= y

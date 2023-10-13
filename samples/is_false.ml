@@ -1,4 +1,4 @@
 open OCanren
-open OCanren.Std 
+open OCanren.Std
 
-let is_false x = x === Bool.falso 
+let is_false x = x === Bool.falso

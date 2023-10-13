@@ -13,17 +13,17 @@ let open_module_pat path =
   structure_item desc Gen.drop Gen.drop
 ;;
 
+let exp_by_desc desc = Gen.(expression desc drop drop drop drop drop)
+
 let exp_apply head args =
   let exp_desc = Expression_desc.texp_apply head args in
-  Gen.(expression exp_desc drop drop drop drop drop)
+  exp_by_desc exp_desc
 ;;
 
 let exp_texp_ident path =
   let desc = Gen.(Expression_desc.texp_ident path drop drop) in
   Gen.(expression desc drop drop drop drop drop)
 ;;
-
-let exp_by_desc desc = Gen.(expression desc drop drop drop drop drop)
 
 module OCanren = struct
   let bin_op path left right =
@@ -52,6 +52,17 @@ module OCanren = struct
     bin_op path
   ;;
 end
+
+let func =
+  let open Gen in
+  let ident = Patterns.ident Gen.var in
+  let pattern_desc = Pattern_desc.tpat_var ident drop in
+  let pattern = pattern_data pattern_desc drop drop drop drop drop in
+  let vb = value_binding pattern drop drop drop in
+  let vbs = Gen.list [ vb ] in
+  let expr_desc = Structure_item_desc.tstr_value Rec_flag.nonrecursive vbs in
+  structure_item drop drop drop
+;;
 
 let translate (t : Typedtree.structure) =
   let slist x = Gen.list x in

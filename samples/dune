@@ -1,39 +1,39 @@
- (executable
+(executable
  (name nat)
  (modules nat)
  (libraries OCanren)
  (flags
   (:standard -rectypes -bin-annot -w -32)))
 
- (executable
+(executable
  (name eq)
  (modules eq)
  (libraries OCanren)
  (flags
   (:standard -rectypes -bin-annot -w -32)))
 
- (executable
+(executable
  (name neq)
  (modules neq)
  (libraries OCanren)
  (flags
   (:standard -rectypes -bin-annot -w -32)))
 
- (executable
+(executable
  (name is_false)
  (modules is_false)
  (libraries OCanren)
  (flags
   (:standard -rectypes -bin-annot -w -32)))
 
- (executable
+(executable
  (name is_true)
  (modules is_true)
  (libraries OCanren)
  (flags
   (:standard -rectypes -bin-annot -w -32)))
 
- (executable
+(executable
  (name false_and_true)
  (modules false_and_true)
  (libraries OCanren)

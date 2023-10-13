@@ -50,9 +50,7 @@ module Gen = struct
     let rec helper xs ps k =
       match xs, ps with
       | [], [] -> k
-      | hdx :: tlx, Pat hdp :: tlp ->
-        let k = hdp hdx k in
-        helper tlx tlp k
+      | hdx :: tlx, Pat hdp :: tlp -> helper tlx tlp k
       | _ -> fail "list"
     in
     Pat (fun x k -> helper x ps k)
@@ -416,3 +414,23 @@ let structure_item (Pat decs) (Pat loc) (Pat env) =
       let { str_desc : structure_item_desc; str_loc : Location.t; str_env : Env.t } = x in
       k |> decs str_desc |> loc str_loc |> env str_env)
 ;;
+
+module Rec_flag = struct
+  open Asttypes
+
+  let nonrecursive =
+    Pat
+      (fun x k ->
+        match x with
+        | Nonrecursive -> k
+        | _ -> fail "Nonrecursive")
+  ;;
+
+  let recursive =
+    Pat
+      (fun x k ->
+        match x with
+        | Recursive -> k
+        | _ -> fail "Recursive")
+  ;;
+end
