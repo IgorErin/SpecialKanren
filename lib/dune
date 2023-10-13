@@ -1,5 +1,6 @@
 (library
  (libraries base compiler-libs.common)
- (flags (:standard -w -32))
+ (flags
+  (:standard -w -32 -w -26 -w -27))
  (modules Patterns Translator Config)
  (name SpecialKanren))

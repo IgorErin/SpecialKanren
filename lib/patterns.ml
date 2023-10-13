@@ -27,7 +27,6 @@ module Gen = struct
 
   let ( <|> ) = alt
   let drop = Pat (fun k _ -> k)
-  let ( >< ) = drop
 
   let lscons (Pat hd') (Pat tl') =
     Pat
@@ -47,17 +46,42 @@ module Gen = struct
         | _ -> fail "list nil")
   ;;
 
-  let list xs eq =
-    Pat
-      (fun x k ->
-        if List.length x = List.length xs
-        then (
-          let is_euqal = List.map2 eq x xs |> List.fold_left Bool.( && ) true in
-          if is_euqal then k else fail "list: doesnt equal")
-        else fail "list: lists have different lengths")
+  let list ps =
+    let rec helper xs ps k =
+      match xs, ps with
+      | [], [] -> k
+      | hdx :: tlx, Pat hdp :: tlp ->
+        let k = hdp hdx k in
+        helper tlx tlp k
+      | _ -> fail "list"
+    in
+    Pat (fun x k -> helper x ps k)
   ;;
 
-  let get f = Pat (fun x k -> f x; k)
+  let pair (Pat fstp) (Pat sndp) = Pat (fun (fst, snd) k -> k |> fstp fst |> sndp snd)
+
+  let get f =
+    Pat
+      (fun x k ->
+        f x;
+        k)
+  ;;
+
+  let some (Pat xp) =
+    Pat
+      (fun x k ->
+        match x with
+        | Some x -> xp x k
+        | None -> fail "Some")
+  ;;
+
+  let none =
+    Pat
+      (fun x k ->
+        match x with
+        | None -> k
+        | Some _ -> fail "None")
+  ;;
 
   let str s = Pat (fun x k -> if String.equal x s then k else fail "String")
 end
