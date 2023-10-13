@@ -1,19 +1,18 @@
 open Patterns
+open Gen
 
 (* TODO (desc -> path etc)*)
 let open_module_pat path =
   let path = Patterns.Path.match' path in
-  let mod_expr_desc = Patterns.Module_expr_desc.tmod_ident path Gen.drop in
-  let open_exp = Patterns.module_expr mod_expr_desc Gen.drop Gen.drop Gen.drop Gen.drop in
-  let open_infos =
-    Patterns.open_infos open_exp Gen.drop Gen.drop Gen.drop Gen.drop Gen.drop
-  in
+  let mod_expr_desc = Patterns.Module_expr_desc.tmod_ident path drop in
+  let open_exp = Patterns.module_expr mod_expr_desc drop drop drop drop in
+  let open_infos = Patterns.open_infos open_exp drop drop drop drop drop in
   let open_dec = open_infos in
   let desc = Structure_item_desc.tstr_open open_dec in
-  structure_item desc Gen.drop Gen.drop
+  structure_item desc drop drop
 ;;
 
-let exp_by_desc desc = Gen.(expression desc drop drop drop drop drop)
+(* let exp_by_desc desc = Gen.(expression desc drop drop drop drop drop)
 
 let exp_apply head args =
   let exp_desc = Expression_desc.texp_apply head args in
@@ -53,35 +52,34 @@ module OCanren = struct
   ;;
 end
 
-let func =
+let strucute_item_value_nonrec vbs = 
   let open Gen in
-  let ident = Patterns.ident Gen.var in
+  let expr_desc = Structure_item_desc.tstr_value Rec_flag.nonrecursive vbs in
+  structure_item expr_desc drop drop
+
+let exp_texp_function = 
+  Expression_desc.texp_function
+
+let func ident exp =
+  let open Gen in
   let pattern_desc = Pattern_desc.tpat_var ident drop in
   let pattern = pattern_data pattern_desc drop drop drop drop drop in
-  let vb = value_binding pattern drop drop drop in
+  let vb = value_binding pattern exp drop drop in
   let vbs = Gen.list [ vb ] in
-  let expr_desc = Structure_item_desc.tstr_value Rec_flag.nonrecursive vbs in
-  structure_item drop drop drop
+  strucute_item_value_nonrec vbs 
 ;;
 
+let ident = Pat (fun x k -> 
+  let name = Ident.name x in 
+  Printf.printf "name: %s %!" name;
+  k) *)
+
 let translate (t : Typedtree.structure) =
-  let slist x = Gen.list x in
-  let pat =
-    open_module_pat
-      Gen.(
-        slist [ str "OCanren" ]
-        <|> slist [ str "OCanren"; str "Std" ]
-        <|> slist [ str "OCanren"; str "Std"; str "Nat" ])
-  in
+  let open Gen in
+  let pat = open_module_pat var in
   let map x =
-    parse
-      pat
-      x
-      (fun _ -> Printf.printf "win \n %!")
-      (fun m ->
-        Printf.printf "%s\n %!" m;
-        Env.empty)
+    parse pat x (fun x -> Printf.printf "open %s\n" @@ String.concat "." x)
   in
-  let _ = List.map map t.str_items in
-  ()
+  let x = List.map map t.str_items  in ()
+  
 ;;

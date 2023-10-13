@@ -5,9 +5,9 @@ exception Expected of reason
 
 let fail str = raise @@ Expected (Fail str)
 
-let parse (Pat f : ('a, 'b, 'c) pat) (x : 'a) (k : 'b) (on_error : _ -> 'c) =
+let parse (Pat f : ('a, 'b, 'c) pat) (x : 'a) (k : 'b) =
   try f x k with
-  | Expected (Fail msg) -> on_error msg
+  | Expected (Fail msg) -> failwith "Fail" (* TODO (parse types, on_error etc) *)
 ;;
 
 open Typedtree
@@ -26,7 +26,7 @@ module Gen = struct
   ;;
 
   let ( <|> ) = alt
-  let drop = Pat (fun k _ -> k)
+  let drop : 'a 'b . ('a, 'b, 'b ) pat = Pat (fun _ k  -> k)
 
   let lscons (Pat hd') (Pat tl') =
     Pat
@@ -50,7 +50,9 @@ module Gen = struct
     let rec helper xs ps k =
       match xs, ps with
       | [], [] -> k
-      | hdx :: tlx, Pat hdp :: tlp -> helper tlx tlp k
+      | hdx :: tlx, Pat hdp :: tlp ->
+        let _ = hdp hdx k in
+        helper tlx tlp k
       | _ -> fail "list"
     in
     Pat (fun x k -> helper x ps k)
@@ -82,6 +84,10 @@ module Gen = struct
   ;;
 
   let str s = Pat (fun x k -> if String.equal x s then k else fail "String")
+
+  let map f (Pat p)= Pat (fun x k -> p x (fun a -> k (f a)))
+
+  let map2 f (Pat p) = Pat (fun x k -> p x (fun a b -> k (f a b)))
 end
 
 let expression

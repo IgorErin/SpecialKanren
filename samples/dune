@@ -39,3 +39,10 @@
  (libraries OCanren)
  (flags
   (:standard -rectypes -bin-annot -w -32)))
+
+(executable
+ (name open)
+ (modules open)
+ (libraries OCanren)
+ (flags
+  (:standard -rectypes -dtypedtree -bin-annot -w -32 -w -33)))
