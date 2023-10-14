@@ -26,7 +26,7 @@ module Gen = struct
   ;;
 
   let ( <|> ) = alt
-  let drop : 'a 'b . ('a, 'b, 'b ) pat = Pat (fun _ k  -> k)
+  let drop : 'a 'b. ('a, 'b, 'b) pat = Pat (fun _ k -> k)
 
   let lscons (Pat hd') (Pat tl') =
     Pat
@@ -58,6 +58,17 @@ module Gen = struct
     Pat (fun x k -> helper x ps k)
   ;;
 
+  let list_closer (Pat p) =
+    let rec helper xs k =
+      match xs with
+      | hd :: tl ->
+        p hd k;
+        helper tl k
+      | [] -> ()
+    in
+    Pat (fun x k -> helper x k)
+  ;;
+
   let pair (Pat fstp) (Pat sndp) = Pat (fun (fst, snd) k -> k |> fstp fst |> sndp snd)
 
   let get f =
@@ -84,9 +95,7 @@ module Gen = struct
   ;;
 
   let str s = Pat (fun x k -> if String.equal x s then k else fail "String")
-
-  let map f (Pat p)= Pat (fun x k -> p x (fun a -> k (f a)))
-
+  let map f (Pat p) = Pat (fun x k -> p x (fun a -> k (f a)))
   let map2 f (Pat p) = Pat (fun x k -> p x (fun a b -> k (f a b)))
 end
 

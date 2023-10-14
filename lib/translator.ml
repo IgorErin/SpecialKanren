@@ -51,35 +51,28 @@ module OCanren = struct
     bin_op path
   ;;
 end
+*)
 
-let strucute_item_value_nonrec vbs = 
+let strucute_item_value vbs =
   let open Gen in
-  let expr_desc = Structure_item_desc.tstr_value Rec_flag.nonrecursive vbs in
+  let expr_desc = Structure_item_desc.tstr_value drop vbs in
   structure_item expr_desc drop drop
-
-let exp_texp_function = 
-  Expression_desc.texp_function
-
-let func ident exp =
-  let open Gen in
-  let pattern_desc = Pattern_desc.tpat_var ident drop in
-  let pattern = pattern_data pattern_desc drop drop drop drop drop in
-  let vb = value_binding pattern exp drop drop in
-  let vbs = Gen.list [ vb ] in
-  strucute_item_value_nonrec vbs 
 ;;
 
-let ident = Pat (fun x k -> 
-  let name = Ident.name x in 
-  Printf.printf "name: %s %!" name;
-  k) *)
+let exp_texp_function = Expression_desc.texp_function
+
+let func =
+  let open Gen in
+  let pattern_desc = Pattern_desc.tpat_var var drop in
+  let pattern = pattern_data pattern_desc drop drop drop drop drop in
+  let vb = value_binding pattern drop drop drop in
+  let vbs = list_closer vb in
+  strucute_item_value vbs
+;;
 
 let translate (t : Typedtree.structure) =
-  let open Gen in
-  let pat = open_module_pat var in
-  let map x =
-    parse pat x (fun x -> Printf.printf "open %s\n" @@ String.concat "." x)
-  in
-  let x = List.map map t.str_items  in ()
-  
+  let pat = func in
+  let map x = parse pat x (fun x -> Printf.printf "open %s\n" (Ident.name x)) in
+  let x = List.map map t.str_items in
+  ()
 ;;

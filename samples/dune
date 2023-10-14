@@ -45,4 +45,11 @@
  (modules open)
  (libraries OCanren)
  (flags
+  (:standard -rectypes -bin-annot -w -32 -w -33)))
+
+(executable
+ (name id)
+ (modules id)
+ (libraries OCanren)
+ (flags
   (:standard -rectypes -dtypedtree -bin-annot -w -32 -w -33)))
