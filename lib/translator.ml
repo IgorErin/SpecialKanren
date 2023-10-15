@@ -56,9 +56,9 @@ let reduce_disj (fst : result) (snd : result) cons =
 let is_conde exp = parse_bool (exp_by_texp_ident Gen.[ str "Ocanren"; str "conde" ]) exp
 let is_list_cons = parse_bool Gen.(exp_by_constr_ident @@ str "::")
 let is_conj = parse_bool conj
-let is_unify = parse_bool nunify
-let is_nunify = parse_bool unify
-let spec_variant = Gen.(exp_by_texp_ident [ str "is/673" ])
+let is_unify = parse_bool unify
+let is_nunify = parse_bool nunify
+let spec_variant = Gen.(exp_by_texp_ident [ str "is" ])
 
 let spec_var =
   Gen.(exp_by_texp_ident [ str "OCanren"; str "Std"; str "Bool"; str "truo" ])
@@ -66,11 +66,14 @@ let spec_var =
 
 let is_spec_variant = parse_bool spec_variant
 let is_spec_var = parse_bool spec_var
+let is_spec_ident ident = String.equal (Ident.name ident) "x"
 
 let rec spec_map : expression -> result =
   fun expr ->
   let constr_expr_desc d = { expr with exp_desc = d } in
   match expr.exp_desc with
+  | Texp_function { param : Ident.t; cases = [ ({ c_rhs; _ } as c) ]; partial = Total; _ }
+    -> spec_map c_rhs
   (* conde *)
   | Texp_apply (hd_exp, [ (lbf, Some list) ]) when is_conde hd_exp ->
     let result = spec_map list in
@@ -113,27 +116,19 @@ let rec spec_map : expression -> result =
   | x -> Expr (constr_expr_desc x)
 ;;
 
-let mapper expr =
-  match expr.exp_desc with
-  | Texp_function
-      { arg_label : arg_label
-      ; param : Ident.t
-      ; cases : value case list
-      ; partial : partial
-      } ->
-    Printf.printf "case len: %d\n" @@ List.length cases;
-    Printf.printf "ident: %s\n" @@ Ident.name param
-  | _ -> Printf.printf "lol\n"
-;;
-
 let translate (t : Typedtree.structure) =
-  let map =
-    { Tast_iterator.default_iterator with
+  let iterator = Tast_mapper.default in
+  let iterator =
+    { iterator with
       expr =
-        (fun self expr ->
-          mapper expr;
-          Tast_iterator.default_iterator.expr self expr)
+        (fun self exp ->
+          let result = spec_map exp in
+          match result with
+          | Expr x -> x
+          | Empty -> failwith "Empty"
+          | ReduceConj -> failwith "ReduceConj")
     }
   in
-  List.iter (map.structure_item map) t.str_items
+  let t = iterator.structure iterator t in
+  Printtyped.implementation Format.std_formatter t
 ;;
