@@ -1,14 +1,8 @@
-(* TODO (desc -> path etc)*)
-
 open Typedtree
 open Asttypes
 open Tast_mapper
 open Ocanren_patterns
 open Patterns
-
-(*
-   delete *)
-let delete_atom _ _ = false
 
 (* iterate over expression *)
 let delete_conj _ = false
@@ -19,11 +13,40 @@ let exp_by_texp_ident ident_list =
   let path = list ident_list in
   let path_pattern = Path.match' path in
   let exp_desc = Expression_desc.texp_ident path_pattern drop drop in
-  let exp = expression exp_desc drop drop drop drop drop in
-  parse_bool exp
+  expression exp_desc drop drop drop drop drop
 ;;
 
-let is_conde = exp_by_texp_ident Gen.[ str "Ocanren"; str "conde" ]
+let unify = Gen.(exp_by_texp_ident [ str "OCanren"; str "===" ])
+let nunify = Gen.(exp_by_texp_ident [ str "OCanren"; str "=/=" ])
+let conj = Gen.(exp_by_texp_ident [ str "OCanren"; str "&&&" ])
+let disj = Gen.(exp_by_texp_ident [ str "OCanren"; str "|||" ])
+
+let texp_apply hd arg_list =
+  let open Gen in
+  let exp_desc = Expression_desc.texp_apply hd arg_list in
+  let expression = expression exp_desc drop drop drop drop drop in
+  false
+;;
+
+(* predicate on (var === variant) formulas *)
+let delete_atom var variant =
+  let open Gen in
+  let open Patterns in
+  let unify_var_by_varian = texp_apply unify @@ list [ var; variant ] in
+  false
+;;
+
+(* predicate on (...) &&& (var =/= variant) &&& (...) formulas *)
+let delete_conj var variant =
+  let open Gen in
+  (* predicate on (var =/= variant) formulas *)
+  let helper = texp_apply nunify @@ list [ var; variant ] in
+  (* NOTE: conj left associative *)
+  let travers = texp_apply conj @@ list [ var; var ] in
+  ()
+;;
+
+let is_conde exp = parse_bool (exp_by_texp_ident Gen.[ str "Ocanren"; str "conde" ]) exp
 
 (* TODO assert on type of cons *)
 let is_list_cons _ = false
