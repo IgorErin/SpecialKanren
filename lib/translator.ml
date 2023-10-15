@@ -4,34 +4,6 @@ open Tast_mapper
 open Ocanren_patterns
 open Patterns
 
-let exp_by_texp_ident ident_list =
-  let open Patterns in
-  let open Gen in
-  let path = list ident_list in
-  let path_pattern = Path.match' path in
-  let exp_desc = Expression_desc.texp_ident path_pattern drop drop in
-  expression exp_desc drop drop drop drop drop
-;;
-
-let exp_by_constr_ident name =
-  let open Patterns in
-  let open Gen in
-  let type_desc = Patterns.Types.constructor_description name in
-  let exp_desc = Expression_desc.texp_construct drop type_desc drop in
-  expression exp_desc drop drop drop drop drop
-;;
-
-let exp_by_texp_apply hd arg_list =
-  let open Gen in
-  let exp_desc = Expression_desc.texp_apply hd arg_list in
-  expression exp_desc drop drop drop drop drop
-;;
-
-let unify = Gen.(exp_by_texp_ident [ str "OCanren"; str "===" ])
-let nunify = Gen.(exp_by_texp_ident [ str "OCanren"; str "=/=" ])
-let conj = Gen.(exp_by_texp_ident [ str "OCanren"; str "&&&" ])
-let disj = Gen.(exp_by_texp_ident [ str "OCanren"; str "|||" ])
-
 type result =
   | Expr of expression
   | ReduceConj
@@ -53,30 +25,33 @@ let reduce_disj (fst : result) (snd : result) cons =
   | ReduceConj, ReduceConj -> ReduceConj
 ;;
 
-let is_conde exp = parse_bool (exp_by_texp_ident Gen.[ str "Ocanren"; str "conde" ]) exp
-let is_list_cons = parse_bool Gen.(exp_by_constr_ident @@ str "::")
-let is_conj = parse_bool conj
-let is_unify = parse_bool unify
-let is_nunify = parse_bool nunify
-let spec_variant = Gen.(exp_by_texp_ident [ str "is" ])
-
-let spec_var =
+let spec_variant =
   Gen.(exp_by_texp_ident [ str "OCanren"; str "Std"; str "Bool"; str "truo" ])
 ;;
 
+let spec_var = Gen.(exp_by_texp_ident [ str "x" ])
 let is_spec_variant = parse_bool spec_variant
 let is_spec_var = parse_bool spec_var
-let is_spec_ident ident = String.equal (Ident.name ident) "x"
+let is_spec_param x = String.equal "x" @@ Ident.name x
 
-let rec spec_map : expression -> result =
-  fun expr ->
+let rec spec_map expr =
   let constr_expr_desc d = { expr with exp_desc = d } in
   match expr.exp_desc with
-  | Texp_function { param : Ident.t; cases = [ ({ c_rhs; _ } as c) ]; partial = Total; _ }
-    -> spec_map c_rhs
+  | Texp_function
+      ({ param : Ident.t; cases = [ ({ c_rhs; _ } as c) ]; partial = Total; _ } as d) ->
+    if is_spec_param param
+    then spec_map c_rhs
+    else
+      spec_map c_rhs
+      |> (function
+      | Expr c_rhs ->
+        let cases = [ { c with c_rhs } ] in
+        let exp_desc = Texp_function { d with cases } in
+        Expr (constr_expr_desc exp_desc)
+      | _ -> failwith "not implemented")
   (* conde *)
-  | Texp_apply (hd_exp, [ (lbf, Some list) ]) when is_conde hd_exp ->
-    let result = spec_map list in
+  | Texp_apply (hd_exp, [ (lbf, Some e) ]) when is_conde hd_exp ->
+    let result = spec_map e in
     result
     |> (function
     | Expr x -> Expr x
