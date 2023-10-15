@@ -13,14 +13,17 @@ let delete_atom _ _ = false
 (* iterate over expression *)
 let delete_conj _ = false
 
-let is_conde expr =
+let exp_by_texp_ident ident_list =
   let open Patterns in
-  let path = Gen.(list [ str "Ocanren"; str "conde" ]) in
+  let open Gen in
+  let path = list ident_list in
   let path_pattern = Path.match' path in
-  match expr.exp_desc with
-  | Texp_ident (path, _, _) -> parse path_pattern path (fun _ -> None)
-  | _ -> failwith "is_conde"
+  let exp_desc = Expression_desc.texp_ident path_pattern drop drop in
+  let exp = expression exp_desc drop drop drop drop drop in
+  parse_bool exp
 ;;
+
+let is_conde = exp_by_texp_ident Gen.[ str "Ocanren"; str "conde" ]
 
 (* TODO assert on type of cons *)
 let is_list_cons _ = false

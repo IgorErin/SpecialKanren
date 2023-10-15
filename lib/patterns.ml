@@ -5,10 +5,12 @@ exception Expected of reason
 
 let fail str = raise @@ Expected (Fail str)
 
-let parse (Pat f : ('a, 'b, 'c) pat) (x : 'a) (k : 'b) =
+let parse (Pat f : ('a, 'b, 'c) pat) (x : 'a) (k : 'b) (e : 'c) =
   try f x k with
-  | Expected (Fail msg) -> failwith "Fail" (* TODO (parse types, on_error etc) *)
+  | Expected (Fail _) -> e
 ;;
+
+let parse_bool p (x : 'a) = parse p x true false
 
 open Typedtree
 
