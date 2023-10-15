@@ -1,78 +1,120 @@
-open Patterns
-open Gen
-
 (* TODO (desc -> path etc)*)
-let open_module_pat path =
-  let path = Patterns.Path.match' path in
-  let mod_expr_desc = Patterns.Module_expr_desc.tmod_ident path drop in
-  let open_exp = Patterns.module_expr mod_expr_desc drop drop drop drop in
-  let open_infos = Patterns.open_infos open_exp drop drop drop drop drop in
-  let open_dec = open_infos in
-  let desc = Structure_item_desc.tstr_open open_dec in
-  structure_item desc drop drop
+
+open Typedtree
+open Asttypes
+open Tast_mapper
+open Ocanren_patterns
+open Patterns
+
+(*
+   delete *)
+let delete_atom _ _ = false
+
+(* iterate over expression *)
+let delete_conj _ = false
+
+let is_conde expr =
+  let open Patterns in
+  let path = Gen.(list [ str "Ocanren"; str "conde" ]) in
+  let path_pattern = Path.match' path in
+  match expr.exp_desc with
+  | Texp_ident (path, _, _) -> parse path_pattern path (fun _ -> None)
+  | _ -> failwith "is_conde"
 ;;
 
-(* let exp_by_desc desc = Gen.(expression desc drop drop drop drop drop)
+(* TODO assert on type of cons *)
+let is_list_cons _ = false
 
-let exp_apply head args =
-  let exp_desc = Expression_desc.texp_apply head args in
-  exp_by_desc exp_desc
+(* first: check that iterate inside conde *)
+
+let is_predicate _ = false
+let is_spec_param _ = false
+let is_atom _ = false
+let is_conj _ = false
+let spec_atom _ = None
+let is_spec _ = false
+
+let pair cons fst snd =
+  match fst, snd with
+  | Some fst, Some snd ->
+    let result = cons fst snd in
+    Some result
+  | None, Some snd -> Some snd
+  | Some fst, None -> Some fst
+  | _ -> None
 ;;
 
-let exp_texp_ident path =
-  let desc = Gen.(Expression_desc.texp_ident path drop drop) in
-  Gen.(expression desc drop drop drop drop drop)
-;;
-
-module OCanren = struct
-  let bin_op path left right =
-    let arg path =
-      Gen.pair Patterns.Arg_lable.noLable (Gen.some @@ exp_texp_ident path)
+let rec spec_map : expression -> expression option =
+  fun expr ->
+  match expr.exp_desc with
+  (* disj construction *)
+  | Texp_construct (loc, desc, [ fst; snd ]) when is_list_cons desc ->
+    let fst = spec_map fst in
+    let snd = spec_map snd in
+    let cons fst snd =
+      { expr with exp_desc = Texp_construct (loc, desc, [ fst; snd ]) }
     in
-    let head =
-      let path = Path.match' path in
-      Gen.(Expression_desc.texp_ident path drop drop)
+    pair cons fst snd
+  (* atom formulas consturction *)
+  | Texp_apply (exp, [ (lbf, Some fst); (lbs, Some snd) ]) when is_conj exp ->
+    let fst = spec_map fst in
+    let snd = spec_map snd in
+    let cons x y =
+      { expr with exp_desc = Texp_apply (exp, [ lbf, Some x; lbs, Some y ]) }
     in
-    exp_apply (exp_by_desc head) (Gen.list [ arg left; arg right ])
-  ;;
-
-  let conj =
-    let path = Gen.(list [ str "OCanren"; str "&&&" ]) in
-    bin_op path
-  ;;
-
-  let unify =
-    let path = Gen.(list [ str "OCanren"; str "===" ]) in
-    bin_op path
-  ;;
-
-  let non_unify =
-    let path = Gen.(list [ str "OCanren"; str "=/=" ]) in
-    bin_op path
-  ;;
-end
-*)
-
-let strucute_item_value vbs =
-  let open Gen in
-  let expr_desc = Structure_item_desc.tstr_value drop vbs in
-  structure_item expr_desc drop drop
+    pair cons fst snd
+  | Texp_apply (exp, _) as e when is_predicate exp ->
+    if is_spec e then None else Some { expr with exp_desc = e }
+  | _ -> failwith "not implemented"
 ;;
 
-let exp_texp_function = Expression_desc.texp_function
+let nil = failwith "nil"
 
-let func =
-  let open Gen in
-  let pattern_desc = Pattern_desc.tpat_var var drop in
-  let pattern = pattern_data pattern_desc drop drop drop drop drop in
-  let vb = value_binding pattern drop drop drop in
-  let vbs = list_closer vb in
-  strucute_item_value vbs
+let rec general_map expr =
+  match expr.exp_desc with
+  | Texp_apply (exp, [ (lb, Some arg) ]) when is_conde exp ->
+    let new_arg =
+      spec_map arg
+      |> function
+      | None -> nil
+      | Some x -> [ lb, Some x ]
+    in
+    let new_desc = Texp_apply (exp, new_arg) in
+    { expr with exp_desc = new_desc }
+  | Texp_function
+      ({ param; cases = ({ c_rhs; _ } as c) :: tl; partial = Total; _ } as desc) ->
+    if is_spec_param param
+    then general_map c_rhs
+    else (
+      (* get next expr and construct back *)
+      let next_expr = general_map c_rhs in
+      let new_case = { c with c_rhs = next_expr } in
+      let new_cases = new_case :: tl in
+      { expr with exp_desc = Texp_function { desc with cases = new_cases } })
+  | _ -> failwith "General map. Not implemented"
+;;
+
+let mapper expr =
+  match expr.exp_desc with
+  | Texp_function
+      { arg_label : arg_label
+      ; param : Ident.t
+      ; cases : value case list
+      ; partial : partial
+      } ->
+    Printf.printf "case len: %d\n" @@ List.length cases;
+    Printf.printf "ident: %s\n" @@ Ident.name param
+  | _ -> Printf.printf "lol\n"
 ;;
 
 let translate (t : Typedtree.structure) =
-  let pat = func in
-  let map x = parse pat x (fun x -> Printf.printf "open %s\n" (Ident.name x)) in
-  let x = List.map map t.str_items in
-  ()
+  let map =
+    { Tast_iterator.default_iterator with
+      expr =
+        (fun self expr ->
+          mapper expr;
+          Tast_iterator.default_iterator.expr self expr)
+    }
+  in
+  List.iter (map.structure_item map) t.str_items
 ;;
