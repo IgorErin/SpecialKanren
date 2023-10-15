@@ -4,9 +4,6 @@ open Tast_mapper
 open Ocanren_patterns
 open Patterns
 
-(* iterate over expression *)
-let delete_conj _ = false
-
 let exp_by_texp_ident ident_list =
   let open Patterns in
   let open Gen in
@@ -16,108 +13,104 @@ let exp_by_texp_ident ident_list =
   expression exp_desc drop drop drop drop drop
 ;;
 
+let exp_by_constr_ident name =
+  let open Patterns in
+  let open Gen in
+  let type_desc = Patterns.Types.constructor_description name in
+  let exp_desc = Expression_desc.texp_construct drop type_desc drop in
+  expression exp_desc drop drop drop drop drop
+;;
+
+let exp_by_texp_apply hd arg_list =
+  let open Gen in
+  let exp_desc = Expression_desc.texp_apply hd arg_list in
+  expression exp_desc drop drop drop drop drop
+;;
+
 let unify = Gen.(exp_by_texp_ident [ str "OCanren"; str "===" ])
 let nunify = Gen.(exp_by_texp_ident [ str "OCanren"; str "=/=" ])
 let conj = Gen.(exp_by_texp_ident [ str "OCanren"; str "&&&" ])
 let disj = Gen.(exp_by_texp_ident [ str "OCanren"; str "|||" ])
 
-let texp_apply hd arg_list =
-  let open Gen in
-  let exp_desc = Expression_desc.texp_apply hd arg_list in
-  let expression = expression exp_desc drop drop drop drop drop in
-  false
+type result =
+  | Expr of expression
+  | ReduceConj
+  | Empty
+
+let reduce_conj (fst : result) (snd : result) cons =
+  match fst, snd with
+  | Expr fst, Expr snd -> Expr (cons fst snd)
+  | Empty, Expr x | Expr x, Empty -> Expr x
+  | Empty, Empty -> Empty
+  | _ -> ReduceConj
 ;;
 
-(* predicate on (var === variant) formulas *)
-let delete_atom var variant =
-  let open Gen in
-  let open Patterns in
-  let unify_var_by_varian = texp_apply unify @@ list [ var; variant ] in
-  false
-;;
-
-(* predicate on (...) &&& (var =/= variant) &&& (...) formulas *)
-let delete_conj var variant =
-  let open Gen in
-  (* predicate on (var =/= variant) formulas *)
-  let helper = texp_apply nunify @@ list [ var; variant ] in
-  (* NOTE: conj left associative *)
-  let travers = texp_apply conj @@ list [ var; var ] in
-  ()
+let reduce_disj (fst : result) (snd : result) cons =
+  match fst, snd with
+  | Expr fst, Expr snd -> Expr (cons fst snd)
+  | Empty, Expr x | Expr x, Empty | ReduceConj, Expr x | Expr x, ReduceConj -> Expr x
+  | ReduceConj, Empty | Empty, ReduceConj | Empty, Empty -> Empty
+  | ReduceConj, ReduceConj -> ReduceConj
 ;;
 
 let is_conde exp = parse_bool (exp_by_texp_ident Gen.[ str "Ocanren"; str "conde" ]) exp
+let is_list_cons = parse_bool Gen.(exp_by_constr_ident @@ str "::")
+let is_conj = parse_bool conj
+let is_unify = parse_bool nunify
+let is_nunify = parse_bool unify
+let spec_variant = Gen.(exp_by_texp_ident [ str "is/673" ])
 
-(* TODO assert on type of cons *)
-let is_list_cons _ = false
-
-(* first: check that iterate inside conde *)
-
-let is_predicate _ = false
-let is_spec_param _ = false
-let is_atom _ = false
-let is_conj _ = false
-let spec_atom _ = None
-let is_spec _ = false
-
-let pair cons fst snd =
-  match fst, snd with
-  | Some fst, Some snd ->
-    let result = cons fst snd in
-    Some result
-  | None, Some snd -> Some snd
-  | Some fst, None -> Some fst
-  | _ -> None
+let spec_var =
+  Gen.(exp_by_texp_ident [ str "OCanren"; str "Std"; str "Bool"; str "truo" ])
 ;;
 
-let rec spec_map : expression -> expression option =
+let is_spec_variant = parse_bool spec_variant
+let is_spec_var = parse_bool spec_var
+
+let rec spec_map : expression -> result =
   fun expr ->
+  let constr_expr_desc d = { expr with exp_desc = d } in
   match expr.exp_desc with
-  (* disj construction *)
-  | Texp_construct (loc, desc, [ fst; snd ]) when is_list_cons desc ->
+  (* conde *)
+  | Texp_apply (hd_exp, [ (lbf, Some list) ]) when is_conde hd_exp ->
+    let result = spec_map list in
+    result
+    |> (function
+    | Expr x -> Expr x
+    | _ -> failwith "not implemented")
+    (* list cons. disjanction for now *)
+  | Texp_construct (ident, typ_desc, [ fst; snd ]) when is_list_cons expr ->
     let fst = spec_map fst in
     let snd = spec_map snd in
-    let cons fst snd =
-      { expr with exp_desc = Texp_construct (loc, desc, [ fst; snd ]) }
-    in
-    pair cons fst snd
-  (* atom formulas consturction *)
-  | Texp_apply (exp, [ (lbf, Some fst); (lbs, Some snd) ]) when is_conj exp ->
-    let fst = spec_map fst in
-    let snd = spec_map snd in
+    let cons x y = constr_expr_desc @@ Texp_construct (ident, typ_desc, [ x; y ]) in
+    reduce_disj fst snd cons
+    (* conj *)
+  | Texp_apply (hd_exp, [ (flb, Some fexp); (slb, Some sexp) ]) when is_conj hd_exp ->
+    let fexp = spec_map fexp in
+    let sexp = spec_map sexp in
     let cons x y =
-      { expr with exp_desc = Texp_apply (exp, [ lbf, Some x; lbs, Some y ]) }
+      constr_expr_desc @@ Texp_apply (hd_exp, [ flb, Some x; slb, Some y ])
     in
-    pair cons fst snd
-  | Texp_apply (exp, _) as e when is_predicate exp ->
-    if is_spec e then None else Some { expr with exp_desc = e }
-  | _ -> failwith "not implemented"
-;;
-
-let nil = failwith "nil"
-
-let rec general_map expr =
-  match expr.exp_desc with
-  | Texp_apply (exp, [ (lb, Some arg) ]) when is_conde exp ->
-    let new_arg =
-      spec_map arg
-      |> function
-      | None -> nil
-      | Some x -> [ lb, Some x ]
-    in
-    let new_desc = Texp_apply (exp, new_arg) in
-    { expr with exp_desc = new_desc }
-  | Texp_function
-      ({ param; cases = ({ c_rhs; _ } as c) :: tl; partial = Total; _ } as desc) ->
-    if is_spec_param param
-    then general_map c_rhs
-    else (
-      (* get next expr and construct back *)
-      let next_expr = general_map c_rhs in
-      let new_case = { c with c_rhs = next_expr } in
-      let new_cases = new_case :: tl in
-      { expr with exp_desc = Texp_function { desc with cases = new_cases } })
-  | _ -> failwith "General map. Not implemented"
+    reduce_conj fexp sexp cons
+  | Texp_apply (hd_exp, [ (flb, Some fexp); (slb, Some sexp) ]) as d when is_unify hd_exp
+    ->
+    if (is_spec_var fexp && is_spec_variant sexp)
+       || (is_spec_variant fexp && is_spec_var sexp)
+    then Empty
+    else if (is_spec_var fexp && (not @@ is_spec_variant sexp))
+            || ((not @@ is_spec_variant fexp) && is_spec_var sexp)
+    then ReduceConj
+    else Expr (constr_expr_desc d)
+  | Texp_apply (hd_exp, [ (flb, Some fexp); (slb, Some sexp) ]) as d when is_nunify hd_exp
+    ->
+    if (is_spec_var fexp && is_spec_variant sexp)
+       || (is_spec_variant fexp && is_spec_var sexp)
+    then ReduceConj
+    else if (is_spec_var fexp && (not @@ is_spec_variant sexp))
+            || ((not @@ is_spec_variant fexp) && is_spec_var sexp)
+    then Empty
+    else Expr (constr_expr_desc d)
+  | x -> Expr (constr_expr_desc x)
 ;;
 
 let mapper expr =

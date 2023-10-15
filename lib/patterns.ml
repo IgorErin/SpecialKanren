@@ -451,3 +451,28 @@ module Rec_flag = struct
         | _ -> fail "Recursive")
   ;;
 end
+
+module Types = struct
+  open Types
+
+  (* Tconstr of Path.t * type_expr list * abbrev_memo ref*)
+  module Type_desc = struct
+    let tconstr (Pat path') (Pat exp_list') (Pat abbrev') =
+      Pat
+        (fun x k ->
+          match x with
+          | Tconstr (path, typ_exp_list, abbrev_memo) ->
+            k |> path' path |> exp_list' typ_exp_list |> abbrev' abbrev_memo
+          | _ -> fail "Type_desc.Tconstr")
+    ;;
+  end
+
+  let constructor_description (Pat name) =
+    (* TODO more fields *)
+    let open Asttypes in
+    Pat
+      (fun x k ->
+        let { cstr_name : string (* Constructor name *); _ } = x in
+        name cstr_name k)
+  ;;
+end
