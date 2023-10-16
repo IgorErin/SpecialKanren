@@ -36,5 +36,25 @@ let () =
   if Config.verbose ()
   then Printf.printf "path: %s\npar: %s\nvariant: %s\n%!" path par variant;
   let cmt = read_cmt_impl path in
-  SpecialKanren.Translator.translate par variant cmt
+  let spec_var =
+    object
+      method exp =
+        let open Patterns in
+        let open Ocanren_patterns in
+        parse_bool Gen.(exp_by_texp_ident [ str "x" ])
+
+      method ident x = String.equal "x" @@ Ident.name x
+    end
+  in
+  let spec_variant =
+    let open Patterns in
+    let open Ocanren_patterns in
+    let spec_variant =
+      Gen.(exp_by_texp_ident [ str "OCanren"; str "Std"; str "Bool"; str "truo" ])
+    in
+    object
+      method exp = parse_bool spec_variant
+    end
+  in
+  SpecialKanren.Translator.translate spec_var spec_variant cmt
 ;;
