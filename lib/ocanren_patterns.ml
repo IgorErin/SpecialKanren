@@ -33,5 +33,3 @@ let is_conj = parse_bool conj
 let is_disj = parse_bool disj
 let is_unify = parse_bool unify
 let is_nunify = parse_bool nunify
-
-

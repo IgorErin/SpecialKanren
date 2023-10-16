@@ -34,12 +34,15 @@ let is_spec_variant = parse_bool spec_variant
 let is_spec_var = parse_bool spec_var
 let is_spec_param x = String.equal "x" @@ Ident.name x
 
-let rec spec_map expr =
+let rec spec_map spec_var spec_variant expr =
+  let var_variant f s = spec_var#exp f && spec_variant#exp s in
+  let var_another_variant f s = spec_var#exp f && (not @@ spec_variant#exp s) in
+  let spec_map = spec_map spec_var spec_variant in
   let constr_expr_desc d = { expr with exp_desc = d } in
   match expr.exp_desc with
   | Texp_function
       ({ param : Ident.t; cases = [ ({ c_rhs; _ } as c) ]; partial = Total; _ } as d) ->
-    if is_spec_param param
+    if spec_var#ident param
     then spec_map c_rhs
     else
       spec_map c_rhs
@@ -51,8 +54,7 @@ let rec spec_map expr =
       | _ -> failwith "not implemented")
   (* conde *)
   | Texp_apply (hd_exp, [ (lbf, Some e) ]) when is_conde hd_exp ->
-    let result = spec_map e in
-    result
+    spec_map e
     |> (function
     | Expr x -> Expr x
     | _ -> failwith "not implemented")
@@ -70,25 +72,22 @@ let rec spec_map expr =
       constr_expr_desc @@ Texp_apply (hd_exp, [ flb, Some x; slb, Some y ])
     in
     reduce_conj fexp sexp cons
+    (* what if (x === ro(spec_var)) TODO())*)
   | Texp_apply (hd_exp, [ (flb, Some fexp); (slb, Some sexp) ]) as d when is_unify hd_exp
     ->
-    if (is_spec_var fexp && is_spec_variant sexp)
-       || (is_spec_variant fexp && is_spec_var sexp)
+    if var_variant fexp sexp || var_variant sexp fexp
     then Empty
-    else if (is_spec_var fexp && (not @@ is_spec_variant sexp))
-            || ((not @@ is_spec_variant fexp) && is_spec_var sexp)
+    else if var_another_variant fexp sexp || var_another_variant sexp fexp
     then ReduceConj
-    else Expr (constr_expr_desc d)
+    else Expr expr
   | Texp_apply (hd_exp, [ (flb, Some fexp); (slb, Some sexp) ]) as d when is_nunify hd_exp
     ->
-    if (is_spec_var fexp && is_spec_variant sexp)
-       || (is_spec_variant fexp && is_spec_var sexp)
+    if var_variant fexp sexp || var_variant sexp fexp
     then ReduceConj
-    else if (is_spec_var fexp && (not @@ is_spec_variant sexp))
-            || ((not @@ is_spec_variant fexp) && is_spec_var sexp)
+    else if var_another_variant fexp sexp || var_another_variant sexp fexp
     then Empty
-    else Expr (constr_expr_desc d)
-  | x -> Expr (constr_expr_desc x)
+    else Expr expr
+  | _ -> Expr expr
 ;;
 
 let translate (t : Typedtree.structure) =
