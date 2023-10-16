@@ -163,8 +163,6 @@ module Structure_item_desc = struct
         | Tstr_open x -> dec x k
         | _ -> fail "Structure_item_desc.Tstr_open")
   ;;
-
-  (* TODO (more patterns)*)
 end
 
 let value_binding (Pat p) (Pat e) (Pat a) (Pat l) =
@@ -180,12 +178,6 @@ let value_binding (Pat p) (Pat e) (Pat a) (Pat l) =
       in
       k |> p vb_pat |> e vb_expr |> a vb_attributes |> l vb_loc)
 ;;
-
-(*
-   type pattern = value general_pattern
-   and 'k general_pattern = 'k pattern_desc pattern_data
-   Note: type value = Value_pattern
-*)
 
 let pattern_data (Pat desc) (Pat loc) (Pat extra) (Pat type') (Pat env) (Pat attributes) =
   Pat
@@ -230,7 +222,6 @@ end
 
 module Expression_desc = struct
   let texp_ident (Pat path') (Pat loc') (Pat t_vd') =
-    (* TODO (type patterns too in t_vd) *)
     Pat
       (fun x k ->
         match x with

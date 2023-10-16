@@ -1,1 +1,1 @@
-val translate : Typedtree.structure -> unit
+val translate : string -> string -> Typedtree.structure -> unit
