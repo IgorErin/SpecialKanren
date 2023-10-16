@@ -15,6 +15,7 @@ let () = Arg.parse options anon_fun message
 
 (* TODO *)
 let () = config.verbose <- true
+let () = Printexc.record_backtrace true
 
 let read_cmt_impl path =
   if Stdlib.Sys.file_exists path

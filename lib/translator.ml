@@ -25,15 +25,6 @@ let reduce_disj (fst : result) (snd : result) cons =
   | ReduceConj, ReduceConj -> ReduceConj
 ;;
 
-let spec_variant =
-  Gen.(exp_by_texp_ident [ str "OCanren"; str "Std"; str "Bool"; str "truo" ])
-;;
-
-let spec_var = Gen.(exp_by_texp_ident [ str "x" ])
-let is_spec_variant = parse_bool spec_variant
-let is_spec_var = parse_bool spec_var
-let is_spec_param x = String.equal "x" @@ Ident.name x
-
 let rec spec_map spec_var spec_variant expr =
   let var_variant f s = spec_var#exp f && spec_variant#exp s in
   let var_another_variant f s = spec_var#exp f && (not @@ spec_variant#exp s) in
@@ -56,7 +47,7 @@ let rec spec_map spec_var spec_variant expr =
   | Texp_apply (hd_exp, [ (lbf, Some e) ]) when is_conde hd_exp ->
     spec_map e
     |> (function
-    | Expr x -> Expr x
+    | Expr x -> Expr (constr_expr_desc @@ Texp_apply (hd_exp, [ lbf, Some x ]))
     | _ -> failwith "not implemented")
     (* list cons. disjanction for now *)
   | Texp_construct (ident, typ_desc, [ fst; snd ]) when is_list_cons expr ->
@@ -90,13 +81,13 @@ let rec spec_map spec_var spec_variant expr =
   | _ -> Expr expr
 ;;
 
-let translate (t : Typedtree.structure) =
+let translate spec_var spec_variant (t : Typedtree.structure) =
   let iterator = Tast_mapper.default in
   let iterator =
     { iterator with
       expr =
         (fun self exp ->
-          let result = spec_map exp in
+          let result = spec_map spec_var spec_variant exp in
           match result with
           | Expr x -> x
           | Empty -> failwith "Empty"
@@ -104,5 +95,6 @@ let translate (t : Typedtree.structure) =
     }
   in
   let t = iterator.structure iterator t in
-  Printtyped.implementation Format.std_formatter t
+  let ast = Untypeast.untype_structure t in
+  Pprintast.structure Format.std_formatter ast
 ;;
