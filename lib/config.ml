@@ -3,12 +3,12 @@ type t =
   ; mutable path : string option
   ; mutable param : string option
   ; mutable variant : string option
-  ; mutable fname : string option 
+  ; mutable fname : string option
   }
 
 let default = { verbose = false; path = None; param = None; variant = None; fname = None }
 let verbose () = default.verbose
-let verbose_on () = default.verbose <- true 
+let verbose_on () = default.verbose <- true
 let set_path p = default.path <- Some p
 let set_param p = default.param <- Some p
 let set_variant v = default.variant <- Some v
@@ -32,7 +32,8 @@ let variant () =
   | None -> failwith "No variant specified"
 ;;
 
-let fname () = 
-  match default.fname with 
-  | Some x -> x 
+let fname () =
+  match default.fname with
+  | Some x -> x
   | None -> failwith "No fname specified"
+;;
