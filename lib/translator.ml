@@ -24,7 +24,7 @@ let reduce_disj (fst : result) (snd : result) cons =
   | ReduceConj, Empty | Empty, ReduceConj | Empty, Empty -> Empty
   | ReduceConj, ReduceConj -> ReduceConj
 ;;
-
+(* add: ctx with level info, function info, spec only special function etc *)
 let rec spec_map spec_var spec_variant expr =
   let var_variant f s = spec_var#exp f && spec_variant#exp s in
   let var_another_variant f s = spec_var#exp f && (not @@ spec_variant#exp s) in
