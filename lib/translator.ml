@@ -90,11 +90,9 @@ let spec_fun spec_f spec_par spec_var soruce_expr =
     | Texp_function ({ param; cases = [ ({ c_rhs; _ } as c) ]; _ } as d) ->
       if spec_par#ident param
       then (
-        let param_idnet = param in
-        (* TODO *)
+        let spec_par = Predicate.par_of_ident param in
         (* reduce. juct skip for now *)
         let spec_f = spec_f in
-        (* TODO modify *)
         spec_exp spec_f spec_par spec_var c_rhs |> exp_of_result)
       else (
         let c_rhs = map (count + 1) c_rhs in
@@ -121,7 +119,7 @@ let spec_str_item funp parp varp str_item =
       if funp#pat vb.vb_pat
       then (
         let fun_ident = ident_of_pattern vb.vb_pat in
-        let funp = funp in
+        let funp = Predicate.fun_of_ident fun_ident in
         let result = spec_fun funp parp varp vb_expr in
         { vb with vb_expr })
       else vb

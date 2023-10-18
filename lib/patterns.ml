@@ -305,11 +305,11 @@ module Path = struct
     loop [] path
   ;;
 
-  let pident (Pat str) =
+  let pident ident =
     Pat
       (fun x k ->
         match x with
-        | Path.Pident x -> str (Ident.name x) k
+        | Path.Pident x when Ident.same x ident -> k
         | _ -> fail "Path.Pident")
   ;;
 
