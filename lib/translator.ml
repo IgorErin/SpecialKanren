@@ -25,16 +25,15 @@ let reduce_disj (fst : result) (snd : result) cons =
   | ReduceConj, ReduceConj -> ReduceConj
 ;;
 
-(* add: ctx with level info, function info, spec only special function etc *)
-let rec spec_map spec_var spec_variant expr =
-  let var_variant f s = spec_var#exp f && spec_variant#exp s in
-  let var_another_variant f s = spec_var#exp f && (not @@ spec_variant#exp s) in
-  let spec_map = spec_map spec_var spec_variant in
+let rec spec_exp p_var p_variant expr =
+  let var_variant f s = p_var#exp f && p_variant#exp s in
+  let var_another_variant f s = p_var#exp f && (not @@ p_variant#exp s) in
+  let spec_map = spec_exp p_var p_variant in
   let constr_expr_desc d = { expr with exp_desc = d } in
   match expr.exp_desc with
   | Texp_function
       ({ param : Ident.t; cases = [ ({ c_rhs; _ } as c) ]; partial = Total; _ } as d) ->
-    if spec_var#ident param
+    if p_var#ident param
     then spec_map c_rhs
     else
       spec_map c_rhs
@@ -82,17 +81,37 @@ let rec spec_map spec_var spec_variant expr =
   | _ -> Expr expr
 ;;
 
-let translate spec_var spec_variant (t : Typedtree.structure) =
+(* check that exist only one such function *)
+let spec_str_item spec_fun spec_exp str_item =
+  let back d = { str_item with str_desc = d } in
+  match str_item.str_desc with
+  | Tstr_value (recf, vb_list) as source ->
+    let map ({ vb_expr; _ } as vb) =
+      if spec_fun#pat vb.vb_pat
+      then (
+        let vb_expr =
+          spec_exp vb_expr
+          |> function
+          | Expr x -> x
+          | _ -> failwith "Not expr in tstr_value."
+        in
+        { vb with vb_expr })
+      else vb
+    in
+    let vb_list = vb_list |> List.map map in
+    back @@ Tstr_value (recf, vb_list)
+  | _ -> str_item
+;;
+
+let translate p_par p_var p_fun (t : Typedtree.structure) =
   let iterator = Tast_mapper.default in
   let iterator =
     { iterator with
-      expr =
-        (fun self exp ->
-          let result = spec_map spec_var spec_variant exp in
-          match result with
-          | Expr x -> x
-          | Empty -> failwith "Empty"
-          | ReduceConj -> failwith "ReduceConj")
+      structure_item =
+        (fun self str ->
+          let spec_exp = spec_exp p_par p_var in
+          let spec_str_item = spec_str_item p_fun spec_exp in
+          spec_str_item str)
     }
   in
   let t = iterator.structure iterator t in

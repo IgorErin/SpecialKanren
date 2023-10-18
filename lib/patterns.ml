@@ -467,3 +467,7 @@ module Types = struct
         name cstr_name k)
   ;;
 end
+
+let ident name =
+  Pat (fun x k -> if String.equal name @@ Ident.name x then k else fail "Ident")
+;;
