@@ -75,3 +75,37 @@ let%expect_test _ =
       open OCanren.Std
       let false_and_true y = conde [y === Bool.truo] |}]
 ;;
+
+let%expect_test _ =
+  createt_test
+    "../../../../default/samples/.eq.eobjs/native/dune__exe__Eq.cmt"
+    "x"
+    "OCanren.Std.Bool.truo"
+    "spec_fun";
+  [%expect
+    {|
+      open OCanren
+      open OCanren.Std
+      let some_fun x = x
+      let spec_fun y = conde [y === Bool.truo] |}]
+;;
+
+let%expect_test _ =
+  createt_test
+    "../../../../default/samples/.le.eobjs/native/dune__exe__Le.cmt"
+    "is"
+    "OCanren.Std.Bool.truo"
+    "le";
+  [%expect
+    {|
+      open OCanren
+      open OCanren.Std
+      open Nat
+      let rec le x y =
+        conde
+          [x === o;
+          Fresh.two
+            (fun x' ->
+               fun y' ->
+                 ((x === (succ x')) &&& (y === (succ y'))) &&& (le x' y' is))] |}]
+;;
