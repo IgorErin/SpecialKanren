@@ -84,6 +84,8 @@ let rec spec_exp par_number p_fun p_par p_var expr =
         Option.map (fun x -> spec_exp x |> exp_of_result) e |> fun x -> lb, x)
       ls
     |> fun ls -> Expr (back @@ Texp_apply (hd, ls))
+  (* paramter -> variant *)
+  | _ when p_par#exp expr -> Expr (p_var#map_exp expr)
   | _ -> Expr expr
 ;;
 

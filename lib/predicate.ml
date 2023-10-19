@@ -16,6 +16,7 @@ let var_of_string path =
   in
   object
     method exp = parse_bool spec_variant
+    method map_exp exp = failwith "not implemented"
   end
 ;;
 
@@ -33,36 +34,27 @@ let fun_of_string name =
   end
 ;;
 
+let exp_by_ident id e =
+  let open Patterns in
+  let open Ocanren_patterns in
+  let open Gen in
+  let path = Path.pident in
+  let path_pattern = Path.pident id in
+  let exp_desc = Expression_desc.texp_ident path_pattern drop drop in
+  let p = expression exp_desc drop drop drop drop drop in
+  parse_bool p e
+;;
+
 let par_of_ident id =
   object
     method ident x = Ident.equal id x
-
-    method exp e =
-      let open Patterns in
-      let open Ocanren_patterns in
-      let open Gen in
-      let path = Path.pident in
-      let path_pattern = Path.pident id in
-      let exp_desc = Expression_desc.texp_ident path_pattern drop drop in
-      let p = expression exp_desc drop drop drop drop drop in
-      parse_bool p e
+    method exp e = exp_by_ident id e
   end
 ;;
 
 let fun_of_ident id =
-  let open Typedtree in
-  let open Ocanren_patterns in
   object
     method ident x = Ident.equal id x
-
-    method exp e =
-      let open Patterns in
-      let open Ocanren_patterns in
-      let open Gen in
-      let path = Path.pident in
-      let path_pattern = Path.pident id in
-      let exp_desc = Expression_desc.texp_ident path_pattern drop drop in
-      let p = expression exp_desc drop drop drop drop drop in
-      parse_bool p e
+    method exp e = exp_by_ident id e
   end
 ;;
