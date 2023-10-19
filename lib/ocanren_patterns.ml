@@ -27,9 +27,13 @@ let unify = Gen.(exp_by_texp_ident [ str "OCanren"; str "===" ])
 let nunify = Gen.(exp_by_texp_ident [ str "OCanren"; str "=/=" ])
 let conj = Gen.(exp_by_texp_ident [ str "OCanren"; str "&&&" ])
 let disj = Gen.(exp_by_texp_ident [ str "OCanren"; str "|||" ])
+
+(* TODO fresh one, two etc *)
+let fresh = Gen.(exp_by_texp_ident [ str "OCanren"; str "Fresh"; drop ])
 let is_conde = parse_bool (exp_by_texp_ident Gen.[ str "OCanren"; str "conde" ])
 let is_list_cons = parse_bool Gen.(exp_by_constr_ident @@ str "::")
 let is_conj = parse_bool conj
 let is_disj = parse_bool disj
 let is_unify = parse_bool unify
 let is_nunify = parse_bool nunify
+let is_fresh = parse_bool fresh

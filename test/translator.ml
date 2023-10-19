@@ -66,6 +66,5 @@ let%expect_test _ =
           [x === o;
           Fresh.two
             (fun x' ->
-               fun y' ->
-                 ((x === (succ x')) &&& (y === (succ y'))) &&& (le x' y' is))] |}]
+               fun y' -> ((x === (succ x')) &&& (y === (succ y'))) &&& (le x' y'))] |}]
 ;;

@@ -25,36 +25,36 @@ let reduce_disj (fst : result) (snd : result) cons =
   | ReduceConj, ReduceConj -> ReduceConj
 ;;
 
-let rec spec_exp p_fun p_par p_var expr =
+let rec spec_exp par_number p_fun p_par p_var expr =
   let var_variant f s = p_par#exp f && p_var#exp s in
   let var_another_variant f s = p_par#exp f && (not @@ p_var#exp s) in
-  let spec_map = spec_exp p_fun p_par p_var in
+  let spec_exp = spec_exp par_number p_fun p_par p_var in
   let back d = { expr with exp_desc = d } in
+  let exp_of_result = function
+    | Expr x -> x
+    | _ -> failwith "Not implemented"
+  in
   match expr.exp_desc with
-  | Texp_function (* remove TODO() *)
-      ({ param; cases = [ ({ c_rhs; _ } as c) ]; partial = Total; _ } as d) ->
-    spec_map c_rhs
-    |> (function
-    | Expr c_rhs ->
-      let exp_desc = Texp_function { d with cases = [ { c with c_rhs } ] } in
-      Expr (back exp_desc)
-    | _ -> failwith "not implemented")
+  | Texp_function ({ param; cases = [ ({ c_rhs; _ } as c) ]; partial = Total; _ } as d) ->
+    let result = spec_exp c_rhs in
+    let c_rhs = exp_of_result result in
+    let exp_desc = Texp_function { d with cases = [ { c with c_rhs } ] } in
+    Expr (back exp_desc)
   (* conde *)
   | Texp_apply (hd_exp, [ (lbf, Some e) ]) when is_conde hd_exp ->
-    spec_map e
-    |> (function
-    | Expr x -> Expr (back @@ Texp_apply (hd_exp, [ lbf, Some x ]))
-    | _ -> failwith "not implemented")
+    let x = spec_exp e |> exp_of_result in
+    Expr (back @@ Texp_apply (hd_exp, [ lbf, Some x ]))
     (* list cons. disjanction for now *)
   | Texp_construct (ident, typ_desc, [ fst; snd ]) when is_list_cons expr ->
-    let fst = spec_map fst in
-    let snd = spec_map snd in
+    let fst = spec_exp fst in
+    let snd = spec_exp snd in
     let cons x y = back @@ Texp_construct (ident, typ_desc, [ x; y ]) in
     reduce_disj fst snd cons
     (* conj *)
+    (* check type of list. should be logic ... Add (|||) predicate*)
   | Texp_apply (hd_exp, [ (flb, Some fexp); (slb, Some sexp) ]) when is_conj hd_exp ->
-    let fexp = spec_map fexp in
-    let sexp = spec_map sexp in
+    let fexp = spec_exp fexp in
+    let sexp = spec_exp sexp in
     let cons x y = back @@ Texp_apply (hd_exp, [ flb, Some x; slb, Some y ]) in
     reduce_conj fexp sexp cons
     (* what if (x === ro(spec_var)) TODO())*)
@@ -72,6 +72,18 @@ let rec spec_exp p_fun p_par p_var expr =
     else if var_another_variant fexp sexp || var_another_variant sexp fexp
     then Empty
     else Expr expr
+  | Texp_apply (hd_exp, ls) when p_fun#exp hd_exp ->
+    (* self rec call. remove argument. TODO (if another variant in argument. We should erase conj) *)
+    assert (List.length ls >= par_number + 1);
+    (* since count start from 0 *)
+    let new_args = ls |> List.filteri (fun i _ -> i <> par_number) in
+    Expr (back @@ Texp_apply (hd_exp, new_args))
+  | Texp_apply (hd, ls) when is_fresh hd ->
+    List.map
+      (fun (lb, e) ->
+        Option.map (fun x -> spec_exp x |> exp_of_result) e |> fun x -> lb, x)
+      ls
+    |> fun ls -> Expr (back @@ Texp_apply (hd, ls))
   | _ -> Expr expr
 ;;
 
@@ -93,7 +105,7 @@ let spec_fun spec_f spec_par spec_var soruce_expr =
         let spec_par = Predicate.par_of_ident param in
         (* reduce. juct skip for now *)
         let spec_f = spec_f in
-        spec_exp spec_f spec_par spec_var c_rhs |> exp_of_result)
+        spec_exp count spec_f spec_par spec_var c_rhs |> exp_of_result)
       else (
         let c_rhs = map (count + 1) c_rhs in
         back @@ Texp_function { d with cases = [ { c with c_rhs } ] })
@@ -120,7 +132,7 @@ let spec_str_item funp parp varp str_item =
       then (
         let fun_ident = ident_of_pattern vb.vb_pat in
         let funp = Predicate.fun_of_ident fun_ident in
-        let result = spec_fun funp parp varp vb_expr in
+        let vb_expr = spec_fun funp parp varp vb_expr in
         { vb with vb_expr })
       else vb
     in
