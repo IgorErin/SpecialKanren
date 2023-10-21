@@ -1,9 +1,9 @@
 open Patterns
 
-let exp_by_texp_ident ident_list =
+let exp_texp_of_path ls =
   let open Patterns in
   let open Gen in
-  let path = list ident_list in
+  let path = list ls in
   let path_pattern = PathPat.match' path in
   let exp_desc = Expression_desc.texp_ident path_pattern drop drop in
   expression exp_desc drop drop drop drop drop
@@ -23,15 +23,15 @@ let exp_by_texp_apply hd arg_list =
   expression exp_desc drop drop drop drop drop
 ;;
 
-let unify = Gen.(exp_by_texp_ident [ str "OCanren"; str "===" ])
-let nunify = Gen.(exp_by_texp_ident [ str "OCanren"; str "=/=" ])
-let conj = Gen.(exp_by_texp_ident [ str "OCanren"; str "&&&" ])
-let disj = Gen.(exp_by_texp_ident [ str "OCanren"; str "|||" ])
+let unify = Gen.(exp_texp_of_path [ str "OCanren"; str "===" ])
+let nunify = Gen.(exp_texp_of_path [ str "OCanren"; str "=/=" ])
+let conj = Gen.(exp_texp_of_path [ str "OCanren"; str "&&&" ])
+let disj = Gen.(exp_texp_of_path [ str "OCanren"; str "|||" ])
 let list_cons = Gen.(exp_by_constr_ident @@ str "::") (* check type.*)
 
 (* TODO fresh one, two etc *)
-let fresh = Gen.(exp_by_texp_ident [ str "OCanren"; str "Fresh"; drop ])
-let is_conde = parse_bool (exp_by_texp_ident Gen.[ str "OCanren"; str "conde" ])
+let fresh = Gen.(exp_texp_of_path [ str "OCanren"; str "Fresh"; drop ])
+let is_conde = parse_bool (exp_texp_of_path Gen.[ str "OCanren"; str "conde" ])
 let is_conj = parse_bool conj
 let is_disj = parse_bool @@ Gen.(disj <|> list_cons)
 let is_unify = parse_bool unify

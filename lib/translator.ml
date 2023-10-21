@@ -84,7 +84,7 @@ let rec spec_exp par_number p_fun p_par p_var expr =
       ls
     |> fun ls -> Expr (back @@ Texp_apply (hd, ls))
   (* paramter -> variant *)
-  | _ when p_par#exp expr -> Expr (p_var#map_exp expr) (* TODO substitute variant *)
+  | _ when p_par#exp expr -> failwith "not implemented!" (* TODO substitute variant *)
   | _ -> Expr expr
 ;;
 
