@@ -1,5 +1,4 @@
 open Typedtree
-open Asttypes
 open Tast_mapper
 open Ocanren_patterns
 open Patterns
@@ -45,7 +44,7 @@ let rec spec_exp par_number p_fun p_par p_var expr =
     let x = spec_exp e |> exp_of_result in
     Expr (back @@ Texp_apply (hd_exp, [ lbf, Some x ]))
     (* list cons. disjanction for now *)
-  | Texp_construct (ident, typ_desc, [ fst; snd ]) when is_list_cons expr ->
+  | Texp_construct (ident, typ_desc, [ fst; snd ]) when is_disj expr ->
     let fst = spec_exp fst in
     let snd = spec_exp snd in
     let cons x y = back @@ Texp_construct (ident, typ_desc, [ x; y ]) in
@@ -57,7 +56,6 @@ let rec spec_exp par_number p_fun p_par p_var expr =
     let sexp = spec_exp sexp in
     let cons x y = back @@ Texp_apply (hd_exp, [ flb, Some x; slb, Some y ]) in
     reduce_conj fexp sexp cons
-    (* what if (x === ro(spec_var)) TODO())*)
   | Texp_apply (hd_exp, [ (flb, Some fexp); (slb, Some sexp) ]) as d when is_unify hd_exp
     ->
     if var_variant fexp sexp || var_variant sexp fexp
@@ -76,6 +74,7 @@ let rec spec_exp par_number p_fun p_par p_var expr =
     (* self rec call. remove argument. TODO (if another variant in argument. We should erase conj) *)
     assert (List.length ls >= par_number + 1);
     (* since count start from 0 *)
+    (* TODO (what if abstracted over argument)*)
     let new_args = ls |> List.filteri (fun i _ -> i <> par_number) in
     Expr (back @@ Texp_apply (hd_exp, new_args))
   | Texp_apply (hd, ls) when is_fresh hd ->
@@ -85,7 +84,7 @@ let rec spec_exp par_number p_fun p_par p_var expr =
       ls
     |> fun ls -> Expr (back @@ Texp_apply (hd, ls))
   (* paramter -> variant *)
-  | _ when p_par#exp expr -> Expr (p_var#map_exp expr)
+  | _ when p_par#exp expr -> Expr (p_var#map_exp expr) (* TODO substitute variant *)
   | _ -> Expr expr
 ;;
 

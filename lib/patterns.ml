@@ -443,7 +443,7 @@ module Rec_flag = struct
   ;;
 end
 
-module Types = struct
+module TypesPats = struct
   open Types
 
   (* Tconstr of Path.t * type_expr list * abbrev_memo ref*)
