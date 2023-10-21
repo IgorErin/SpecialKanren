@@ -75,7 +75,7 @@ let rec spec_exp par_number p_fun p_par p_var expr =
     (* self rec call. remove argument. TODO (if another variant in argument. We should erase conj) *)
     (match arg with
      | Some arg ->
-       if p_var#exp arg
+       if p_par#exp arg
        then (
          (* delete if equal *)
          let new_args = ls |> List.filteri (fun i _ -> i <> par_number) in
