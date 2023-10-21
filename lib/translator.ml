@@ -50,7 +50,7 @@ let rec spec_exp par_number p_fun p_par p_var expr =
     let cons x y = back @@ Texp_construct (ident, typ_desc, [ x; y ]) in
     reduce_disj fst snd cons
     (* conj *)
-    (* check type of list. should be logic ... Add (|||) predicate*)
+    (* check type of list. should be logic ...*)
   | Texp_apply (hd_exp, [ (flb, Some fexp); (slb, Some sexp) ]) when is_conj hd_exp ->
     let fexp = spec_exp fexp in
     let sexp = spec_exp sexp in

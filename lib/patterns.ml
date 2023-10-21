@@ -293,7 +293,7 @@ module Arg_lable = struct
   ;;
 end
 
-module Path = struct
+module PathPat = struct
   let extract path =
     let rec loop acc = function
       | Path.Pident x -> Ident.name x :: acc

@@ -8,14 +8,21 @@ let par_of_string name =
 let var_of_string path =
   let open Patterns in
   let open Ocanren_patterns in
-  let spec_variant =
-    path
-    |> String.split_on_char '.'
-    |> List.map Patterns.Gen.str
-    |> fun x -> exp_by_texp_ident x
+  let path_of_string ls =
+    let rec helper acc = function
+      | hd :: tl -> helper (Path.Pdot (acc, hd)) tl
+      | [] -> acc
+    in
+    let ls = List.rev ls in
+    let start = Path.Pident (Ident.create_persistent @@ List.hd ls) in
+    helper start ls
   in
+  let str_path = path |> String.split_on_char '.' in
+  let path = path_of_string str_path in
   object
-    method exp = parse_bool spec_variant
+    method exp =
+      str_path |> List.map Patterns.Gen.str |> fun x -> exp_by_texp_ident x |> parse_bool
+
     method map_exp exp = failwith "not implemented"
   end
 ;;
@@ -38,8 +45,8 @@ let exp_by_ident id e =
   let open Patterns in
   let open Ocanren_patterns in
   let open Gen in
-  let path = Path.pident in
-  let path_pattern = Path.pident id in
+  let path = PathPat.pident in
+  let path_pattern = PathPat.pident id in
   let exp_desc = Expression_desc.texp_ident path_pattern drop drop in
   let p = expression exp_desc drop drop drop drop drop in
   parse_bool p e

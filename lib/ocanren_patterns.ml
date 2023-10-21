@@ -4,7 +4,7 @@ let exp_by_texp_ident ident_list =
   let open Patterns in
   let open Gen in
   let path = list ident_list in
-  let path_pattern = Path.match' path in
+  let path_pattern = PathPat.match' path in
   let exp_desc = Expression_desc.texp_ident path_pattern drop drop in
   expression exp_desc drop drop drop drop drop
 ;;
