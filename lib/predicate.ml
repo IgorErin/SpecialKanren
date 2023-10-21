@@ -29,11 +29,12 @@ let par_of_string name =
 (* full path for now *)
 let var_of_string path =
   let open Patterns in
-  let open Ocanren_patterns in
   let str_path = path |> String.split_on_char '.' in
   object
     method exp =
-      str_path |> List.map Patterns.Gen.str |> fun x -> exp_by_texp_ident x |> parse_bool
+      str_path
+      |> List.map Patterns.Gen.str
+      |> fun x -> Ocanren_patterns.exp_texp_of_path x |> parse_bool
 
     method path = Helpers.path_of_string str_path
   end

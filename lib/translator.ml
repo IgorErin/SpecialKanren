@@ -31,7 +31,7 @@ let rec spec_exp par_number p_fun p_par p_var expr =
   let back d = { expr with exp_desc = d } in
   let exp_of_result = function
     | Expr x -> x
-    | _ -> failwith "Not implemented"
+    | _ -> failwith "Not implemented exp of result"
   in
   match expr.exp_desc with
   | Texp_function ({ param; cases = [ ({ c_rhs; _ } as c) ]; partial = Total; _ } as d) ->
@@ -71,12 +71,18 @@ let rec spec_exp par_number p_fun p_par p_var expr =
     then Empty
     else Expr expr
   | Texp_apply (hd_exp, ls) when p_fun#exp hd_exp ->
+    let _, arg = List.nth ls par_number in
     (* self rec call. remove argument. TODO (if another variant in argument. We should erase conj) *)
-    assert (List.length ls >= par_number + 1);
-    (* since count start from 0 *)
-    (* TODO (what if abstracted over argument)*)
-    let new_args = ls |> List.filteri (fun i _ -> i <> par_number) in
-    Expr (back @@ Texp_apply (hd_exp, new_args))
+    (match arg with
+     | Some arg ->
+       if p_var#exp arg
+       then (
+         (* delete if equal *)
+         let new_args = ls |> List.filteri (fun i _ -> i <> par_number) in
+         Expr (back @@ Texp_apply (hd_exp, new_args)))
+       else (* if not -> erase conj*)
+         ReduceConj
+     | None -> failwith "Abstracted over spec paramter. Not implemented.")
   | Texp_apply (hd, ls) when is_fresh hd ->
     List.map
       (fun (lb, e) ->
