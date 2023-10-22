@@ -95,6 +95,7 @@ let spec_exp par_number p_fun p_par p_var expr =
          let cons x y = back @@ Texp_apply (hd_exp, [ flb, Some x; slb, Some y ]) in
          reduce_conj fexp sexp cons
        | _ -> assert false)
+    (* === *)
     | Texp_apply (hd_exp, args) as d when is_unify hd_exp ->
       (match args with
        | [ (flb, Some fexp); (slb, Some sexp) ] ->
@@ -104,6 +105,7 @@ let spec_exp par_number p_fun p_par p_var expr =
          then ReduceConj
          else Expr expr
        | _ -> assert false)
+    (* =/= *)
     | Texp_apply (hd_exp, args) as d when is_nunify hd_exp ->
       (match args with
        | [ (flb, Some fexp); (slb, Some sexp) ] ->
@@ -113,12 +115,16 @@ let spec_exp par_number p_fun p_par p_var expr =
          then Empty
          else Expr expr
        | _ -> assert false)
+    (* rec call *)
     | Texp_apply (hd_exp, ls) when p_fun#exp hd_exp ->
       let _, arg = List.nth ls par_number in
-      (* self rec call. remove argument. TODO (if another variant in argument. We should erase conj) *)
       (match arg with
        | Some arg ->
-         if p_par#exp arg
+         (* 1) if spec param -> delete arg
+            2) if spec variant -> delete arg
+            TODO() 3) if another variable -> unify that variable with variant conj
+            TODO() 4) if another variant -> reduce conj *)
+         if p_par#exp arg || p_var#exp arg
          then (
            (* delete if equal *)
            let new_args = ls |> List.filteri (fun i _ -> i <> par_number) in
@@ -127,6 +133,9 @@ let spec_exp par_number p_fun p_par p_var expr =
            ReduceConj
        | None -> failwith "Abstracted over spec paramter. Not implemented.")
     | Texp_apply (hd, args) when is_fresh hd ->
+      (* if fresh variable unified with parameter -> TODO()
+         1) substitute variant in variable uses
+         2) remove fresh vraible creation *)
       (match args with
        | [ (lb, Some e) ] ->
          let f x = back @@ Texp_apply (hd, [ lb, Some x ]) in

@@ -68,3 +68,16 @@ let%expect_test _ =
             (fun x' ->
                fun y' -> ((x === (succ x')) &&& (y === (succ y'))) &&& (le x' y'))] |}]
 ;;
+
+let%expect_test _ =
+  createt_test
+    "../../../../default/samples/.rec_call.eobjs/native/dune__exe__Rec_call.cmt"
+    "is"
+    "OCanren.Std.Bool.truo"
+    "first";
+  [%expect
+    {|
+      open OCanren
+      open OCanren.Std
+      let rec first x = conde [] |}]
+;;

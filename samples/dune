@@ -18,3 +18,10 @@
  (libraries OCanren)
  (flags
   (:standard -rectypes -bin-annot -w -32)))
+
+(executable
+ (name rec_call)
+ (modules rec_call)
+ (libraries OCanren)
+ (flags
+  (:standard -rectypes -bin-annot -w -32)))
