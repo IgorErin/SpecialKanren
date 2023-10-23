@@ -3,4 +3,4 @@
  (flags
   (:standard -w -32))
  (name main)
- (libraries SpecialKanren))
+ (libraries SpecialKanren findlib))
