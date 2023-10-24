@@ -1,22 +1,27 @@
 let tool_name = "SpecialCanren"
 
+type ff =
+  | Cmt
+  | Ml
+
 type t =
-  {  mutable verbose : bool
+  { mutable verbose : bool
   ; mutable path : string option
   ; mutable param : string option
   ; mutable fname : string option
   ; mutable include_dirs : string list
   ; mutable opens : string list
+  ; mutable ff : ff option
   }
 
 let default =
-  {
-     verbose = false
+  { verbose = false
   ; path = None
   ; param = None
   ; fname = None
   ; include_dirs = []
   ; opens = []
+  ; ff = None
   }
 ;;
 
@@ -27,6 +32,8 @@ let set_param p = default.param <- Some p
 let set_fname n = default.fname <- Some n
 let add_dir d = default.include_dirs <- d :: default.include_dirs
 let add_open o = default.opens <- o :: default.opens
+let cmt () = default.ff <- Some Cmt
+let ml () = default.ff <- Some Ml
 
 let path () =
   match default.path with
@@ -48,3 +55,9 @@ let fname () =
 
 let include_dirs () = default.include_dirs
 let opens () = default.opens
+
+let ff () =
+  match default.ff with
+  | Some x -> x
+  | None -> failwith "No file format specified"
+;;

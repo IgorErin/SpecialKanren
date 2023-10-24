@@ -1,6 +1,5 @@
-let std_lib_names = [ "OCanren"]
-
-let std_opens = [ "OCanren"; "OCanren.Std"]
+let std_lib_names = [ "OCanren" ]
+let std_opens = [ "OCanren"; "OCanren.Std" ]
 
 let get_std_lib_pathes () =
   List.filter_map
