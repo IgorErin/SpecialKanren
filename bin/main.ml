@@ -15,9 +15,6 @@ let options =
   ]
 ;;
 
-let () = Arg.parse options anon_fun message
-let () = Clflags.recursive_types := true
-
 let read_cmt path =
   let open Tast_mapper in
   let map_env s =
@@ -34,13 +31,14 @@ let read_cmt path =
 ;;
 
 let read_ml input_name =
-  (* add config dirs and opens TODO()*)
-  Clflags.include_dirs := List.append (Utils.get_std_lib_pathes ()) !Clflags.include_dirs;
-  Clflags.open_modules := List.append Utils.std_opens !Clflags.open_modules;
+  Clflags.include_dirs
+    := List.concat
+         [ Utils.get_std_lib_pathes (); Config.include_dirs (); !Clflags.include_dirs ];
+  Clflags.open_modules
+    := List.concat [ Utils.std_opens; Config.opens (); !Clflags.open_modules ];
   Compmisc.init_path ();
-  let open Compenv in
-  let outputprefix = output_prefix input_name in
-  let modulename = module_of_filename input_name outputprefix in
+  let outputprefix = Compenv.output_prefix input_name in
+  let modulename = Compenv.module_of_filename input_name outputprefix in
   Env.set_unit_name modulename;
   let env = Compmisc.initial_env () in
   let { Typedtree.structure = s; _ } =
@@ -48,6 +46,13 @@ let read_ml input_name =
     |> Typemod.type_implementation input_name outputprefix modulename env
   in
   s
+;;
+
+(* init *)
+let () =
+  let () = Arg.parse options anon_fun message in
+  let () = Clflags.recursive_types := true in
+  ()
 ;;
 
 let () =
