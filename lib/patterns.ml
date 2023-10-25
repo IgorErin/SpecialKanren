@@ -130,21 +130,6 @@ let expression
       |> attributes' exp_attributes)
 ;;
 
-(* type tructure_item_desc =
-   Tstr_eval of expression * attributes
-   | Tstr_value of rec_flag * value_binding list // Done
-   | Tstr_primitive of value_description
-   | Tstr_type of rec_flag * type_declaration list
-   | Tstr_typext of type_extension
-   | Tstr_exception of type_exception
-   | Tstr_module of module_binding
-   | Tstr_recmodule of module_binding list
-   | Tstr_modtype of module_type_declaration
-   | Tstr_open of open_declaration
-   | Tstr_class of (class_declaration * string list) list
-   | Tstr_class_type of (Ident.t * string loc * class_type_declaration) list
-   | Tstr_include of include_declaration
-   | Tstr_attribute of attribute*)
 module Structure_item_desc = struct
   (*Tstr_value of rec_flag * value_binding list*)
   let tstr_value (Pat first) (Pat second) =

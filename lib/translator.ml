@@ -2,53 +2,7 @@ open Typedtree
 open Tast_mapper
 open Ocanren_patterns
 open Patterns
-
-module Result = struct
-  type result =
-    | Expr of expression
-    | ReduceConj
-    | Empty
-
-  let map ~f = function
-    | Expr x -> Expr (f x)
-    | Empty -> Empty
-    | ReduceConj -> ReduceConj
-  ;;
-
-  let bind ~f = function
-    | Expr x -> f x
-    | Empty -> Empty
-    | ReduceConj -> ReduceConj
-  ;;
-
-  let reduce_conj (fst : result) (snd : result) cons =
-    match fst, snd with
-    | Expr fst, Expr snd -> Expr (cons fst snd)
-    | Empty, Expr x | Expr x, Empty -> Expr x
-    | Empty, Empty -> Empty
-    | _ -> ReduceConj
-  ;;
-
-  let reduce_disj (fst : result) (snd : result) cons =
-    match fst, snd with
-    | Expr fst, Expr snd -> Expr (cons fst snd)
-    | Empty, Expr x | Expr x, Empty | ReduceConj, Expr x | Expr x, ReduceConj -> Expr x
-    | ReduceConj, Empty | Empty, ReduceConj | Empty, Empty -> Empty
-    | ReduceConj, ReduceConj -> ReduceConj
-  ;;
-
-  let get = function
-    | Expr x -> x
-    | _ -> failwith "Expr expected."
-  ;;
-
-  let is_reduce_conj = function
-    | ReduceConj -> true
-    | _ -> false
-  ;;
-end
-
-open Result
+open Sresult
 
 let ( >> ) f g x = f x |> g
 
@@ -67,14 +21,14 @@ let spec_exp par_number p_fun p_par p_var expr =
            let exp_desc = Texp_function { d with cases = [ { c with c_rhs } ] } in
            back exp_desc
          in
-         Result.map ~f @@ run c_rhs
+         Sresult.map ~f @@ run c_rhs
        | _ -> assert false)
     (* conde *)
     | Texp_apply (hd_exp, args) when is_conde hd_exp ->
       (match args with
        | [ (lbf, Some e) ] ->
          let f x = back @@ Texp_apply (hd_exp, [ lbf, Some x ]) in
-         Result.map ~f @@ run e
+         Sresult.map ~f @@ run e
        | _ -> assert false)
       (* list cons. disjanction for now *)
     | Texp_construct (ident, typ_desc, args) when is_disj expr ->
@@ -139,7 +93,7 @@ let spec_exp par_number p_fun p_par p_var expr =
       (match args with
        | [ (lb, Some e) ] ->
          let f x = back @@ Texp_apply (hd, [ lb, Some x ]) in
-         run e |> Result.map ~f
+         run e |> Sresult.map ~f
        | _ -> assert false)
     (* paramter -> variant *)
     | _ when p_par#exp expr -> failwith "not implemented!" (* TODO substitute variant *)
@@ -202,14 +156,15 @@ let spec_str_item funp parp varp str_item =
   | _ -> str_item
 ;;
 
-let translate funp parp varp (t : Typedtree.structure) =
+let translate funp parp (t : Typedtree.structure) =
   let iterator = Tast_mapper.default in
   let iterator =
     { iterator with
       structure_item =
         (fun self str ->
-          let spec_str_item = spec_str_item funp parp varp in
-          spec_str_item str)
+          (* let spec_str_item = spec_str_item funp parp varp in *)
+          (* spec_str_item str *)
+          failwith "LOL")
     }
   in
   let t = iterator.structure iterator t in

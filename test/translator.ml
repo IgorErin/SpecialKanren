@@ -1,24 +1,31 @@
 open SpecialKanren
 
-(* copypast from main. rework *)
-
-let read_cmt_impl path =
-  if Stdlib.Sys.file_exists path
-  then (
-    let infos = Cmt_format.read_cmt path in
-    infos.Cmt_format.cmt_annots
-    |> function
-    | Cmt_format.Implementation cmt -> cmt
-    | _ -> failwith "Implementation expected")
-  else failwith "File does not exist"
+let () =
+  let () = Clflags.recursive_types := true in
+  ()
 ;;
 
-let createt_test path par var fname =
-  let cmt = read_cmt_impl path in
+(* copypast from main. rework *)
+let read_cmt path =
+  let open Tast_mapper in
+  let map_env s =
+    let mapper = { default with env = (fun _ env -> Envaux.env_of_only_summary env) } in
+    mapper.structure mapper s
+  in
+  let infos = Cmt_format.read_cmt path in
+  infos.Cmt_format.cmt_annots
+  |> function
+  | Cmt_format.Implementation cmt ->
+    Load_path.init infos.cmt_loadpath;
+    map_env cmt
+  | _ -> failwith "Implementation expected"
+;;
+
+let createt_test path par fname =
+  let cmt = read_cmt path in
   let spec_par = Predicate.par_of_string par in
-  let spec_var = Predicate.var_of_string var in
   let spec_fun = Predicate.fun_of_string fname in
-  SpecialKanren.Translator.translate spec_fun spec_par spec_var cmt
+  SpecialKanren.Translator.translate spec_fun spec_par cmt
 ;;
 
 (* end of copypast *)
@@ -27,7 +34,6 @@ let%expect_test _ =
   createt_test
     "../../../../default/samples/.false_and_true.eobjs/native/dune__exe__False_and_true.cmt"
     "x"
-    "OCanren.Std.Bool.truo"
     "false_and_true";
   [%expect
     {|
@@ -40,7 +46,6 @@ let%expect_test _ =
   createt_test
     "../../../../default/samples/.eq.eobjs/native/dune__exe__Eq.cmt"
     "x"
-    "OCanren.Std.Bool.truo"
     "spec_fun";
   [%expect
     {|
@@ -54,7 +59,6 @@ let%expect_test _ =
   createt_test
     "../../../../default/samples/.le.eobjs/native/dune__exe__Le.cmt"
     "is"
-    "OCanren.Std.Bool.truo"
     "le";
   [%expect
     {|
@@ -73,7 +77,6 @@ let%expect_test _ =
   createt_test
     "../../../../default/samples/.rec_call.eobjs/native/dune__exe__Rec_call.cmt"
     "is"
-    "OCanren.Std.Bool.truo"
     "first";
   [%expect
     {|

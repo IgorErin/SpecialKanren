@@ -2,7 +2,5 @@
  (libraries base compiler-libs.common)
  (flags
   (:standard -w -32 -w -26 -w -27 -w -33))
- (modules Patterns Translator Config Ocanren_patterns Predicate)
- (name SpecialKanren)
- (preprocess
-  (pps ppxlib.metaquot)))
+ (modules Patterns Translator Ocanren_patterns Sresult Predicate)
+ (name SpecialKanren))
