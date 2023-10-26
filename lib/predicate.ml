@@ -18,6 +18,8 @@ let par_of_string name =
 
 let var_of_constr_desc desc all =
   let open Typedtree in
+  let open Types in
+  let eq { cstr_name = fst; _ } { cstr_name = snd; _ } = String.equal fst snd in
   let get_cons e =
     match e.exp_desc with
     | Texp_construct (_, cd, _) -> Some cd
@@ -25,13 +27,13 @@ let var_of_constr_desc desc all =
   in
   let texp_apply e =
     match e.exp_desc with
-    | Texp_apply (hd, [ (_, Some texp) ]) when Ocanren_patterns.is_inj hd -> Some e
+    | Texp_apply (hd, [ (_, Some texp) ]) when Ocanren_patterns.is_inj hd -> Some texp
     | _ -> None
   in
-  let is_spec d = if Types.may_equal_constr desc d then Some () else None in
+  let is_spec d = if eq desc d then Some () else None in
   let is_other d =
-    let not_spec = not @@ Types.may_equal_constr d desc in
-    let in_all = List.exists (Types.may_equal_constr d) all in
+    let not_spec = not @@ eq d desc in
+    let in_all = List.exists (fun x -> eq d x) all in
     if in_all && not_spec then Some () else None
   in
   let ( >>= ) = Option.bind in

@@ -2,9 +2,7 @@ let skip_ilogic expt =
   let open Types in
   let open Ocanren_patterns in
   match get_desc expt with
-  | Tconstr (path, [ x ], _) when is_ilogic path ->
-    Path.print Format.std_formatter path;
-    x
+  | Tconstr (path, [ x ], _) when is_ilogic path -> x
   | _ -> failwith "ilogic expected"
 ;;
 
@@ -17,10 +15,12 @@ let path_of_constr texp =
 
 let look env path = Env.find_type path env
 
-let get_manifest Types.{ type_manifest; _ } =
+let get_manifest Types.{ type_manifest; type_arity; _ } =
   match type_manifest with
   | Some x -> x
-  | None -> failwith "Empty manifest"
+  | None ->
+    Printf.printf "arity = %d" type_arity;
+    failwith "Empty manifest"
 ;;
 
 let get_variants Types.{ type_kind; _ } =
@@ -47,12 +47,12 @@ let get_cons type_exp env =
   skip_ilogic type_exp
   |> path_of_constr
   |> look env
-  |> get_manifest
-  |> path_of_constr
-  |> look env
-  |> get_manifest
-  |> path_of_constr
-  |> look env
+  (* |> get_manifest
+     |> path_of_constr
+     |> look env *)
+  (* |> get_manifest
+     |> path_of_constr
+     |> look env *)
   |> get_variants
   |> List.map (fun { cd_id; _ } -> Env.find_ident_constructor cd_id env)
 ;;

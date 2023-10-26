@@ -38,8 +38,8 @@ let%expect_test _ =
   [%expect
     {|
       open OCanren
-      open OCanren.Std
-      let false_and_true y = conde [y === Bool.truo] |}]
+      let false_and_true y = conde [y === (!! false); y === (!! true)]
+      and false_and_true y = conde [y === (!! true)] |}]
 ;;
 
 let%expect_test _ =
@@ -50,9 +50,9 @@ let%expect_test _ =
   [%expect
     {|
       open OCanren
-      open OCanren.Std
       let some_fun x = x
-      let spec_fun y = conde [y === Bool.truo] |}]
+      let spec_fun y = conde [y === (!! false)]
+      and spec_fun y = conde [y === (!! true)] |}]
 ;;
 
 let%expect_test _ =
@@ -63,6 +63,12 @@ let%expect_test _ =
       open OCanren.Std
       open Nat
       let rec le x y =
+        conde
+          [(x =/= o) &&& (y === o);
+          Fresh.two
+            (fun x' ->
+               fun y' -> ((x === (succ x')) &&& (y === (succ y'))) &&& (le x' y'))]
+      and le x y =
         conde
           [x === o;
           Fresh.two
