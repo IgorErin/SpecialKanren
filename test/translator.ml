@@ -25,7 +25,8 @@ let createt_test path par fname =
   let cmt = read_cmt path in
   let spec_par = Predicate.par_of_string par in
   let spec_fun = Predicate.fun_of_string fname in
-  SpecialKanren.Translator.translate spec_fun spec_par cmt
+  let pp = Format.str_formatter in
+  SpecialKanren.Translator.translate pp spec_fun spec_par cmt
 ;;
 
 (* end of copypast *)
@@ -39,7 +40,7 @@ let%expect_test _ =
     {|
       open OCanren
       let false_and_true y = conde [y === (!! false); y === (!! true)]
-      and false_and_true y = conde [y === (!! true)] |}]
+      let false_and_true y = conde [y === (!! true)] |}]
 ;;
 
 let%expect_test _ =
@@ -52,7 +53,7 @@ let%expect_test _ =
       open OCanren
       let some_fun x = x
       let spec_fun y = conde [y === (!! false)]
-      and spec_fun y = conde [y === (!! true)] |}]
+      let spec_fun y = conde [y === (!! true)] |}]
 ;;
 
 let%expect_test _ =
@@ -68,7 +69,7 @@ let%expect_test _ =
           Fresh.two
             (fun x' ->
                fun y' -> ((x === (succ x')) &&& (y === (succ y'))) &&& (le x' y'))]
-      and le x y =
+      let rec le x y =
         conde
           [x === o;
           Fresh.two
@@ -76,14 +77,15 @@ let%expect_test _ =
                fun y' -> ((x === (succ x')) &&& (y === (succ y'))) &&& (le x' y'))] |}]
 ;;
 
-(* let%expect_test _ =
-   createt_test
-   "../../../../default/samples/.rec_call.eobjs/native/dune__exe__Rec_call.cmt"
-   "is"
-   "first";
-   [%expect
+let%expect_test _ =
+  createt_test
+    "../../../../default/samples/.rec_call.eobjs/native/dune__exe__Rec_call.cmt"
+    "is"
+    "first";
+  [%expect
     {|
       open OCanren
       open OCanren.Std
-      let rec first x = conde [] |}]
-   ;; *)
+      let rec first x = conde [x === Nat.o]
+      let rec first x = conde [Fresh.one (fun x -> first x)] |}]
+;;

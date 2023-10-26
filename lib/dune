@@ -3,4 +3,6 @@
  (flags
   (:standard -w -32 -w -26 -w -27 -w -33))
  (modules Patterns Translator Ocanren_patterns Sresult Predicate Typespat)
- (name SpecialKanren))
+ (name SpecialKanren)
+ (preprocess
+  (pps ppxlib.metaquot ppx_optcomp)))

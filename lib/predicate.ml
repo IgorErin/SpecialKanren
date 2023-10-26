@@ -57,10 +57,11 @@ let fun_of_string name =
   end
 ;;
 
-let par_of_ident id =
+let par_of_ident id number =
   object
     method ident x = Ident.same id x
     method exp e = Helpers.exp_by_ident id e
+    method number = number
   end
 ;;
 

@@ -63,11 +63,12 @@ let () =
   let parp = Predicate.par_of_string par in
   let funp = Predicate.fun_of_string fname in
   let ff = Config.ff () in
+  let pp = Format.std_formatter in
   match ff with
   | Ml ->
     let str = read_ml path in
-    SpecialKanren.Translator.translate funp parp str
+    SpecialKanren.Translator.translate pp funp parp str
   | Cmt ->
     let str = read_cmt path in
-    SpecialKanren.Translator.translate funp parp str
+    SpecialKanren.Translator.translate pp funp parp str
 ;;

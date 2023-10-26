@@ -1,7 +1,7 @@
 open Typedtree
 
-type sresult =
-  | Expr of expression
+type 'a sresult =
+  | Expr of 'a
   | ReduceConj
   | Empty
 
@@ -17,7 +17,7 @@ let bind ~f = function
   | ReduceConj -> ReduceConj
 ;;
 
-let reduce_conj (fst : sresult) (snd : sresult) cons =
+let reduce_conj fst snd cons =
   match fst, snd with
   | Expr fst, Expr snd -> Expr (cons fst snd)
   | Empty, Expr x | Expr x, Empty -> Expr x
@@ -25,7 +25,7 @@ let reduce_conj (fst : sresult) (snd : sresult) cons =
   | _ -> ReduceConj
 ;;
 
-let reduce_disj (fst : sresult) (snd : sresult) cons =
+let reduce_disj fst snd cons =
   match fst, snd with
   | Expr fst, Expr snd -> Expr (cons fst snd)
   | Empty, Expr x | Expr x, Empty | ReduceConj, Expr x | Expr x, ReduceConj -> Expr x
@@ -41,4 +41,9 @@ let get = function
 let is_reduce_conj = function
   | ReduceConj -> true
   | _ -> false
+;;
+
+let with_default x = function
+  | Expr x -> Expr x
+  | _ -> Expr x
 ;;
