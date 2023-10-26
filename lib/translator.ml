@@ -7,8 +7,8 @@ open Sresult
 let ( >> ) f g x = f x |> g
 
 let spec_exp par_number p_fun p_par p_var expr =
-  let var_variant f s = p_par#exp f && p_var#exp s in
-  let var_another_variant f s = p_par#exp f && (not @@ p_var#exp s) in
+  let var_variant f s = p_par#exp f && p_var#this s in
+  let var_another_variant f s = p_par#exp f && p_var#another s in
   let rec run par_number p_fun p_par p_var expr =
     let back d = { expr with exp_desc = d } in
     let run = run par_number p_fun p_par p_var in
@@ -78,7 +78,7 @@ let spec_exp par_number p_fun p_par p_var expr =
             2) if spec variant -> delete arg
             TODO() 3) if another variable -> unify that variable with variant conj
             TODO() 4) if another variant -> reduce conj *)
-         if p_par#exp arg || p_var#exp arg
+         if p_par#exp arg || p_var#this arg
          then (
            (* delete if equal *)
            let new_args = ls |> List.filteri (fun i _ -> i <> par_number) in
@@ -106,11 +106,20 @@ let spec_exp par_number p_fun p_par p_var expr =
    1) find spec param nubmer
    2) reduce sepc formal parameter
    3) call spec_exp with modified spec_f predicate object with info about (1)*)
-let spec_fun spec_f spec_par spec_var soruce_expr =
+
+let spec_fun spec_f spec_par source_expr =
   let exp_of_result = function
     | Expr x -> x
     | _ -> failwith "spec_fun. Not Expr"
   in
+  let open Types in
+  let get_variants { type_kind : type_decl_kind; type_manifest : type_expr option; _ } =
+    let open Types in
+    match type_manifest with
+    | Some _ -> failwith "Some"
+    | None -> failwith " NOne "
+  in
+  let get_type { c_lhs = { pat_type; pat_env; _ }; _ } = pat_type, pat_env in
   let rec map count expr =
     let back d = { expr with exp_desc = d } in
     match expr.exp_desc with
@@ -118,15 +127,18 @@ let spec_fun spec_f spec_par spec_var soruce_expr =
       if spec_par#ident param
       then (
         let spec_par = Predicate.par_of_ident param in
+        let ty, env = get_type c in
+        let var = Typespat.get_cons ty env in
         (* reduce. juct skip for now *)
-        let spec_f = spec_f in
+        (* TODO *)
+        let spec_var = Predicate.var_of_constr_desc (List.hd var) var in
         spec_exp count spec_f spec_par spec_var c_rhs |> exp_of_result)
       else (
         let c_rhs = map (count + 1) c_rhs in
         back @@ Texp_function { d with cases = [ { c with c_rhs } ] })
     | _ -> failwith "Function expected."
   in
-  map 0 soruce_expr
+  map 0 source_expr
 ;;
 
 (* TODO() check that exist only one such function *)
@@ -134,7 +146,7 @@ let spec_fun spec_f spec_par spec_var soruce_expr =
 (* 1) find spec_fun in struct_item list
    2) call spec_fun on her arguments
    3) modify fun_predicate since Ident occurse *)
-let spec_str_item funp parp varp str_item =
+let spec_str_item funp parp str_item =
   let back d = { str_item with str_desc = d } in
   let ident_of_pattern = function
     | { pat_desc = Tpat_var (id, _); _ } -> id
@@ -147,7 +159,7 @@ let spec_str_item funp parp varp str_item =
       then (
         let fun_ident = ident_of_pattern vb.vb_pat in
         let funp = Predicate.fun_of_ident fun_ident in
-        let vb_expr = spec_fun funp parp varp vb_expr in
+        let vb_expr = spec_fun funp parp vb_expr in
         { vb with vb_expr })
       else vb
     in
@@ -162,9 +174,8 @@ let translate funp parp (t : Typedtree.structure) =
     { iterator with
       structure_item =
         (fun self str ->
-          (* let spec_str_item = spec_str_item funp parp varp in *)
-          (* spec_str_item str *)
-          failwith "LOL")
+          let spec_str_item = spec_str_item funp parp in
+          spec_str_item str)
     }
   in
   let t = iterator.structure iterator t in

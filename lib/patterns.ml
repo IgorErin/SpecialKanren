@@ -456,3 +456,10 @@ end
 let ident name =
   Pat (fun x k -> if String.equal name @@ Ident.name x then k else fail "Ident")
 ;;
+
+let arg (Pat lb') (Pat exp') =
+  Pat
+    (fun x k ->
+      match x with
+      | lb, exp -> lb' lb k |> exp' exp)
+;;

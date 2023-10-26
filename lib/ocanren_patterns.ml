@@ -28,6 +28,8 @@ let nunify = Gen.(exp_texp_of_path [ str "OCanren"; str "=/=" ])
 let conj = Gen.(exp_texp_of_path [ str "OCanren"; str "&&&" ])
 let disj = Gen.(exp_texp_of_path [ str "OCanren"; str "|||" ])
 let list_cons = Gen.(exp_by_constr_ident @@ str "::") (* check type.*)
+let ilogic = Gen.(PathPat.match' @@ list [ str "OCanren__"; str "Logic"; str "ilogic" ])
+let inj = Gen.(exp_texp_of_path [ str "OCanren"; str "!!" ])
 
 (* TODO fresh one, two etc *)
 let fresh = Gen.(exp_texp_of_path [ str "OCanren"; str "Fresh"; drop ])
@@ -37,3 +39,5 @@ let is_disj = parse_bool @@ Gen.(disj <|> list_cons)
 let is_unify = parse_bool unify
 let is_nunify = parse_bool nunify
 let is_fresh = parse_bool fresh
+let is_ilogic = parse_bool ilogic
+let is_inj = parse_bool inj

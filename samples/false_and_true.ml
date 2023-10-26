@@ -1,4 +1,3 @@
 open OCanren
-open OCanren.Std
 
-let false_and_true x y = conde [ x =/= Bool.truo &&& (y === Bool.falso); y === Bool.truo ]
+let false_and_true x y = conde [ x =/= !!true &&& (y === !!false); y === !!true ]

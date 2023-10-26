@@ -1,14 +1,4 @@
 module Helpers = struct
-  let path_of_string ls =
-    let rec helper acc = function
-      | hd :: tl -> helper (Path.Pdot (acc, hd)) tl
-      | [] -> acc
-    in
-    let ls = List.rev ls in
-    let start = Path.Pident (Ident.create_persistent @@ List.hd ls) in
-    helper start ls
-  ;;
-
   let exp_by_ident id e =
     let open Patterns in
     let open Gen in
@@ -26,17 +16,28 @@ let par_of_string name =
   end
 ;;
 
-(* full path for now *)
-let var_of_string path =
-  let open Patterns in
-  let str_path = path |> String.split_on_char '.' in
+let var_of_constr_desc desc all =
+  let open Typedtree in
+  let get_cons e =
+    match e.exp_desc with
+    | Texp_construct (_, cd, _) -> Some cd
+    | _ -> None
+  in
+  let texp_apply e =
+    match e.exp_desc with
+    | Texp_apply (hd, [ (_, Some texp) ]) when Ocanren_patterns.is_inj hd -> Some e
+    | _ -> None
+  in
+  let is_spec d = if Types.may_equal_constr desc d then Some () else None in
+  let is_other d =
+    let not_spec = not @@ Types.may_equal_constr d desc in
+    let in_all = List.exists (Types.may_equal_constr d) all in
+    if in_all && not_spec then Some () else None
+  in
+  let ( >>= ) = Option.bind in
   object
-    method exp =
-      str_path
-      |> List.map Patterns.Gen.str
-      |> fun x -> Ocanren_patterns.exp_texp_of_path x |> parse_bool
-
-    method path = Helpers.path_of_string str_path
+    method this e = texp_apply e >>= get_cons >>= is_spec |> Option.is_some
+    method another e = texp_apply e >>= get_cons >>= is_other |> Option.is_some
   end
 ;;
 
