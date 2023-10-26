@@ -40,6 +40,7 @@ let var_of_constr_desc desc all =
   object
     method this e = texp_apply e >>= get_cons >>= is_spec |> Option.is_some
     method another e = texp_apply e >>= get_cons >>= is_other |> Option.is_some
+    method name = desc.cstr_name
   end
 ;;
 

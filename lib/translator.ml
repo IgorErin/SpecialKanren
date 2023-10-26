@@ -133,9 +133,17 @@ let spec_str_item funp parp varp str_item =
     in
     loop exp
   in
+  let map_pat (Parsetree.{ ppat_desc; _ } as p) =
+    let open Parsetree in
+    match ppat_desc with
+    | Ppat_var ident ->
+      let txt = ident.txt ^ "_" ^ varp#name in
+      Pat.var { ident with txt }
+    | _ -> failwith "Var expected"
+  in
   match str_item.str_desc with
   | Tstr_value (recf, [ vb ]) as source ->
-    let pat = Untypeast.untype_pattern vb.vb_pat in
+    let pat = Untypeast.untype_pattern vb.vb_pat |> map_pat in
     let vb = Vb.mk pat @@ Sresult.get (spec_exp vb.vb_expr) in
     Str.value recf [ vb ]
   | Tstr_value _ -> assert false
@@ -176,7 +184,7 @@ let collect_info funp parp (s : Typedtree.structure_item) =
        | Some (parp, variants) -> funp, parp, variants
        | None -> failwith "Parameter not found.")
     | Tstr_value _ -> assert false
-    | _ -> failwith "Lold"
+    | _ -> failwith "Not implemented"
   in
   collect funp parp s
 ;;
@@ -187,18 +195,23 @@ let parse_of_typed funp parp str_item =
     | Tstr_value (_, vbl) as source -> List.exists (fun x -> funp#pat x.vb_pat) vbl
     | _ -> false
   in
+  let untyped_str =
+    let mapper = Untypeast.default_mapper in
+    mapper.structure_item mapper
+  in
   let p = struct_item_predicate funp in
   if p str_item
   then (
     let funp, parp, variants = collect_info funp parp str_item in
-    List.map
-      (fun variant ->
-        let varp = Predicate.var_of_constr_desc variant variants in
-        spec_str_item funp parp varp str_item)
-      variants)
-  else (
-    let mapper = Untypeast.default_mapper in
-    mapper.structure_item mapper str_item |> fun x -> [ x ])
+    let specs =
+      List.map
+        (fun variant ->
+          let varp = Predicate.var_of_constr_desc variant variants in
+          spec_str_item funp parp varp str_item)
+        variants
+    in
+    untyped_str str_item :: specs)
+  else untyped_str str_item |> fun x -> [ x ]
 ;;
 
 let translate pp funp parp (t : Typedtree.structure) =

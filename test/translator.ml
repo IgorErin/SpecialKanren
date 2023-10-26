@@ -39,8 +39,10 @@ let%expect_test _ =
   [%expect
     {|
       open OCanren
-      let false_and_true y = conde [y === (!! false); y === (!! true)]
-      let false_and_true y = conde [y === (!! true)] |}]
+      let false_and_true x y =
+        conde [(x =/= (!! true)) &&& (y === (!! false)); y === (!! true)]
+      let false_and_true_false y = conde [y === (!! false); y === (!! true)]
+      let false_and_true_true y = conde [y === (!! true)] |}]
 ;;
 
 let%expect_test _ =
@@ -52,8 +54,12 @@ let%expect_test _ =
     {|
       open OCanren
       let some_fun x = x
-      let spec_fun y = conde [y === (!! false)]
-      let spec_fun y = conde [y === (!! true)] |}]
+      let spec_fun x y =
+        conde
+          [(x === (!! true)) &&& (y === (!! true));
+          (x === (!! false)) &&& (y === (!! false))]
+      let spec_fun_false y = conde [y === (!! false)]
+      let spec_fun_true y = conde [y === (!! true)] |}]
 ;;
 
 let%expect_test _ =
@@ -63,13 +69,21 @@ let%expect_test _ =
       open OCanren
       open OCanren.Std
       open Nat
-      let rec le x y =
+      let rec le x y is =
+        conde
+          [(x === o) &&& (is === (!! true));
+          ((x =/= o) &&& (y === o)) &&& ((!! false) === is);
+          Fresh.two
+            (fun x' ->
+               fun y' ->
+                 ((x === (succ x')) &&& (y === (succ y'))) &&& (le x' y' is))]
+      let rec le_false x y =
         conde
           [(x =/= o) &&& (y === o);
           Fresh.two
             (fun x' ->
                fun y' -> ((x === (succ x')) &&& (y === (succ y'))) &&& (le x' y'))]
-      let rec le x y =
+      let rec le_true x y =
         conde
           [x === o;
           Fresh.two
@@ -86,6 +100,10 @@ let%expect_test _ =
     {|
       open OCanren
       open OCanren.Std
-      let rec first x = conde [x === Nat.o]
-      let rec first x = conde [Fresh.one (fun x -> first x)] |}]
+      let rec first x is =
+        conde
+          [(x === Nat.o) &&& (is === (!! false));
+          Fresh.one (fun x -> first x (!! true))]
+      let rec first_false x = conde [x === Nat.o]
+      let rec first_true x = conde [Fresh.one (fun x -> first x)] |}]
 ;;
