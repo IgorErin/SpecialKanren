@@ -222,12 +222,15 @@ let collect_info funp parp (s : Typedtree.structure_item) =
   collect funp parp s
 ;;
 
+let struct_item_predicate funp str =
+  match str.str_desc with
+  | Tstr_value (_, vbl) when List.exists (fun x -> funp#pat x.vb_pat) vbl ->
+    if List.length vbl > 1 then failwith "Mutual rec functions not supported.";
+    true
+  | _ -> false
+;;
+
 let parse_of_typed funp parp str_item =
-  let struct_item_predicate funp str =
-    match str.str_desc with
-    | Tstr_value (_, vbl) -> List.exists (fun x -> funp#pat x.vb_pat) vbl
-    | _ -> false
-  in
   let untyped_str =
     let mapper = Untypeast.default_mapper in
     mapper.structure_item mapper
@@ -237,6 +240,7 @@ let parse_of_typed funp parp str_item =
   then (
     let funp, parp, variants = collect_info funp parp str_item in
     let specs =
+      (* spec for each variant *)
       List.map
         (fun variant ->
           let varp = Predicate.var_of_constr_desc variant variants in
@@ -247,8 +251,15 @@ let parse_of_typed funp parp str_item =
   else untyped_str str_item |> fun x -> [ x ]
 ;;
 
+(* TODO separate validation *)
 let translate pp funp parp (t : Typedtree.structure) =
-  let func = parse_of_typed funp parp in
-  let str_items = List.map func t.str_items |> List.concat in
-  Pprintast.structure pp str_items
+  let count = List.filter (struct_item_predicate funp) t.str_items |> List.length in
+  (* check that exist only one such function *)
+  match count with
+  | _ when count = 1 ->
+    let func = parse_of_typed funp parp in
+    let str_items = List.map func t.str_items |> List.concat in
+    Pprintast.structure pp str_items
+  | _ when count < 0 -> failwith "Fun not found"
+  | _ -> failwith "More then one function found"
 ;;

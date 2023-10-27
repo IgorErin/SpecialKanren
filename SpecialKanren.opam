@@ -12,10 +12,10 @@ depends: [
   "ocamlfind"
   "GT"
   "OCanren" {>= "0.3.0~"}
-  "odoc" {with-doc}
   "ocamlformat" {>= "0.26" & with-test}
   "ppx_optcomp"
   "ppxlib"
+  "odoc" {with-doc}
 ]
 build: [
   ["dune" "subst"] {dev}
