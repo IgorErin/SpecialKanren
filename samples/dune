@@ -25,3 +25,10 @@
  (libraries OCanren)
  (flags
   (:standard -rectypes -bin-annot -w -32)))
+
+(executable
+ (name subs)
+ (modules subs)
+ (libraries OCanren)
+ (flags
+  (:standard -rectypes -bin-annot -w -32)))

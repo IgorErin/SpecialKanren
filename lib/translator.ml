@@ -6,6 +6,8 @@ open Sresult
 
 (* TODO() check that exist only one such function *)
 
+let ( >> ) f g x = f x |> g
+
 (* 1) find spec_fun in struct_item list
    2) call spec_fun on her arguments
    3) modify fun_predicate with fun name Ident *)
@@ -127,8 +129,27 @@ let spec_str_item funp parp varp str_item =
            let f x = Exp.apply (untyp_exp hd) [ lb, x ] in
            loop e |> Sresult.map ~f
          | _ -> assert false)
+      | Texp_apply (hd, args) ->
+        let hd = untyp_exp hd in
+        let map_arg map (lb, arg) = lb, map arg in
+        let args =
+          List.map
+            (fun (lb, x) ->
+              let x = Option.bind x (fun x -> loop x |> Sresult.to_opt) in
+              lb, x)
+            args
+          |> List.filter_map (fun (lb, x) ->
+            x
+            |> function
+            | Some x -> Some (lb, x)
+            | _ -> None)
+        in
+        Expr (Exp.apply hd args)
       (* paramter -> variant *)
-      | _ when parp#exp exp -> failwith "not implemented!" (* TODO substitute variant *)
+      | _ when parp#exp exp ->
+        let loc = Location.none in
+        Expr [%expr !![%e varp#instance]]
+        (* TODO substitute variant *)
       | _ -> Expr (untyp_exp exp)
     in
     loop exp

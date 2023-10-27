@@ -107,3 +107,22 @@ let%expect_test _ =
       let rec first_false x = conde [x === Nat.o]
       let rec first_true x = conde [Fresh.one (fun x -> first x)] |}]
 ;;
+
+let%expect_test _ =
+  createt_test
+    "../../../../default/samples/.subs.eobjs/native/dune__exe__Subs.cmt"
+    "is"
+    "myfun";
+  [%expect
+    {|
+      open OCanren
+      open OCanren.Std.Nat
+      let rel x y is = conde [(x === o) &&& (is === (!! false)); y === o]
+      let myfun x y is =
+        conde
+          [(x === o) &&& (is === (!! true));
+          (y === (succ o)) &&& (is === (!! false));
+          rel x y is]
+      let myfun_false x y = conde [y === (succ o); rel x y (!! false)]
+      let myfun_true x y = conde [x === o; rel x y (!! true)] |}]
+;;

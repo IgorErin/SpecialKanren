@@ -47,3 +47,8 @@ let with_default x = function
   | Expr x -> Expr x
   | _ -> Expr x
 ;;
+
+let to_opt = function
+  | Expr x -> Some x
+  | _ -> None
+;;

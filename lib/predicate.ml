@@ -41,6 +41,13 @@ let var_of_constr_desc desc all =
     method this e = texp_apply e >>= get_cons >>= is_spec |> Option.is_some
     method another e = texp_apply e >>= get_cons >>= is_other |> Option.is_some
     method name = desc.cstr_name
+
+    method instance =
+      let open Ast_helper in
+      assert (List.length desc.cstr_args = 0);
+      let lid = Longident.Lident desc.cstr_name in
+      let ident = Exp.construct (Location.mkloc lid Location.none) None in
+      ident
   end
 ;;
 
