@@ -1,7 +1,5 @@
 open Typedtree
-open Tast_mapper
 open Ocanren_patterns
-open Patterns
 open Sresult
 
 (* TODO() check that exist only one such function *)
@@ -22,8 +20,8 @@ let spec_str_item funp parp varp str_item =
       match exp.exp_desc with
       | Texp_function { param; cases = [ { c_rhs; _ } ]; _ } when parp#ident param ->
         loop c_rhs
-      | Texp_function { arg_label; param; cases = [ { c_lhs; c_guard; c_rhs } ]; partial }
-        ->
+      | Texp_function
+          { arg_label; param = _; cases = [ { c_lhs; c_guard; c_rhs } ]; partial = _ } ->
         let open Untypeast in
         let c_lhs = untype_pattern c_lhs in
         let c_guard = Option.map untype_expression c_guard in
@@ -32,7 +30,7 @@ let spec_str_item funp parp varp str_item =
         (match c_rhs with
          | Expr c_rhs -> Exp.fun_ arg_label c_guard c_lhs c_rhs |> fun x -> Expr x
          | _ -> c_rhs)
-      | Texp_function { arg_label; param; cases; partial } ->
+      | Texp_function { arg_label = _; param = _; cases; partial = _ } ->
         List.map
           (fun { c_lhs; c_guard; c_rhs } ->
             let open Untypeast in
@@ -54,34 +52,33 @@ let spec_str_item funp parp varp str_item =
            Sresult.map ~f @@ (loop e |> Sresult.with_default [%expr []])
          | _ -> assert false)
       (* (::) list cons. assume disj *)
-      | Texp_construct (ident, typ_desc, args) when is_list_cons exp ->
+      | Texp_construct (_, _, args) when is_list_cons exp ->
         (match args with
          | [ fst; snd ] ->
            let fst = loop fst in
            let snd = loop snd in
-           let result = Exp.construct ident in
            let f x y =
              let loc = Location.none in
              [%expr [%e x] :: [%e y]]
            in
            reduce_disj fst snd f
          | _ -> assert false)
-        (* (|||) disj *)
-        | Texp_apply (hd_exp, args) when is_disj hd_exp ->
-          (match args with
-           | [ (flb, Some fexp); (slb, Some sexp) ] ->
-             let fexp = loop fexp in
-             let sexp = loop sexp in
-             let cons x y =
-               let loc = Location.none in
-               [%expr [%e x] ||| [%e y]]
-             in
-             reduce_disj fexp sexp cons
-           | _ -> assert false)
+      (* (|||) disj *)
+      | Texp_apply (hd_exp, args) when is_disj hd_exp ->
+        (match args with
+         | [ (_, Some fexp); (_, Some sexp) ] ->
+           let fexp = loop fexp in
+           let sexp = loop sexp in
+           let cons x y =
+             let loc = Location.none in
+             [%expr [%e x] ||| [%e y]]
+           in
+           reduce_disj fexp sexp cons
+         | _ -> assert false)
         (* (&&&) conj *)
       | Texp_apply (hd_exp, args) when is_conj hd_exp ->
         (match args with
-         | [ (flb, Some fexp); (slb, Some sexp) ] ->
+         | [ (_, Some fexp); (_, Some sexp) ] ->
            let fexp = loop fexp in
            let sexp = loop sexp in
            let cons x y =
@@ -91,9 +88,9 @@ let spec_str_item funp parp varp str_item =
            reduce_conj fexp sexp cons
          | _ -> assert false)
       (* === *)
-      | Texp_apply (hd_exp, args) as d when is_unify hd_exp ->
+      | Texp_apply (hd_exp, args) when is_unify hd_exp ->
         (match args with
-         | [ (flb, Some fexp); (slb, Some sexp) ] ->
+         | [ (_, Some fexp); (_, Some sexp) ] ->
            (match () with
             | () when var_variant fexp sexp || var_variant sexp fexp -> Empty
             | () when var_another_variant fexp sexp || var_another_variant sexp fexp ->
@@ -101,9 +98,9 @@ let spec_str_item funp parp varp str_item =
             | _ -> Expr (untyp_exp exp))
          | _ -> assert false)
       (* =/= *)
-      | Texp_apply (hd_exp, args) as d when is_nunify hd_exp ->
+      | Texp_apply (hd_exp, args) when is_nunify hd_exp ->
         (match args with
-         | [ (flb, Some fexp); (slb, Some sexp) ] ->
+         | [ (_, Some fexp); (_, Some sexp) ] ->
            (match () with
             | () when var_variant fexp sexp || var_variant sexp fexp -> ReduceConj
             | () when var_another_variant fexp sexp || var_another_variant sexp fexp ->
@@ -133,13 +130,13 @@ let spec_str_item funp parp varp str_item =
             | _ -> (* if not -> erase conj*) ReduceConj)
          | None -> failwith "Abstracted over spec paramter. Not implemented.")
       | Texp_apply (hd, args) when is_fresh hd ->
-        (* if fresh variable unified with parameter -> 
-          TODO() 1) collect fresh varialbes when going thorw fresh
-          TODO() 2) collect deleted fresh variables in fresh body
-          TODO() 3) when return. 
-                    create fresh lookup table like (two -> one, etc )
-                    reduce deleted fresh variables creation
-                    count deleted variables and map fresh)
+        (* if fresh variable unified with parameter ->
+           TODO() 1) collect fresh varialbes when going thorw fresh
+           TODO() 2) collect deleted fresh variables in fresh body
+           TODO() 3) when return.
+           create fresh lookup table like (two -> one, etc )
+           reduce deleted fresh variables creation
+           count deleted variables and map fresh)
            1) substitute variant in variable uses
            2) remove fresh vraible creation *)
         (match args with
@@ -149,7 +146,6 @@ let spec_str_item funp parp varp str_item =
          | _ -> assert false)
       | Texp_apply (hd, args) ->
         let hd = untyp_exp hd in
-        let map_arg map (lb, arg) = lb, map arg in
         let args =
           List.map
             (fun (lb, x) ->
@@ -171,7 +167,7 @@ let spec_str_item funp parp varp str_item =
     in
     loop exp
   in
-  let map_pat (Parsetree.{ ppat_desc; _ } as p) =
+  let map_pat Parsetree.{ ppat_desc; _ } =
     let open Parsetree in
     match ppat_desc with
     | Ppat_var ident ->
@@ -180,7 +176,7 @@ let spec_str_item funp parp varp str_item =
     | _ -> failwith "Var expected"
   in
   match str_item.str_desc with
-  | Tstr_value (recf, [ vb ]) as source ->
+  | Tstr_value (recf, [ vb ]) ->
     let pat = Untypeast.untype_pattern vb.vb_pat |> map_pat in
     let vb = Vb.mk pat @@ Sresult.get (spec_exp vb.vb_expr) in
     Str.value recf [ vb ]
@@ -193,7 +189,7 @@ let collect_info funp parp (s : Typedtree.structure_item) =
     let get_type { c_lhs = { pat_type; pat_env; _ }; _ } = pat_type, pat_env in
     let rec loop count e =
       match e.exp_desc with
-      | Texp_function ({ param; cases = [ ({ c_rhs; _ } as c) ]; _ } as d) ->
+      | Texp_function { param; cases = [ ({ c_rhs; _ } as c) ]; _ } ->
         if p param
         then (
           let ty, env = get_type c in
@@ -206,15 +202,14 @@ let collect_info funp parp (s : Typedtree.structure_item) =
     in
     loop 0
   in
-  let collect funp parp str_item =
-    let back d = { str_item with str_desc = d } in
+  let collect _ parp str_item =
     let ident_of_pattern = function
       | { pat_desc = Tpat_var (id, _); _ } -> id
       | _ -> failwith "Var expected."
     in
     match str_item.str_desc with
     (* one binding *)
-    | Tstr_value (recf, [ vb ]) as source ->
+    | Tstr_value (_, [ vb ]) ->
       let fun_ident = ident_of_pattern vb.vb_pat in
       let funp = Predicate.fun_of_ident fun_ident in
       let cons = get_variants parp#ident vb.vb_expr in
@@ -230,7 +225,7 @@ let collect_info funp parp (s : Typedtree.structure_item) =
 let parse_of_typed funp parp str_item =
   let struct_item_predicate funp str =
     match str.str_desc with
-    | Tstr_value (_, vbl) as source -> List.exists (fun x -> funp#pat x.vb_pat) vbl
+    | Tstr_value (_, vbl) -> List.exists (fun x -> funp#pat x.vb_pat) vbl
     | _ -> false
   in
   let untyped_str =
@@ -255,5 +250,5 @@ let parse_of_typed funp parp str_item =
 let translate pp funp parp (t : Typedtree.structure) =
   let func = parse_of_typed funp parp in
   let str_items = List.map func t.str_items |> List.concat in
-  Pprintast.structure Format.std_formatter str_items
+  Pprintast.structure pp str_items
 ;;

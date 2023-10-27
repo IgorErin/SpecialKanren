@@ -1,7 +1,5 @@
 (library
  (libraries base compiler-libs.common)
- (flags
-  (:standard -w -32 -w -26 -w -27 -w -33))
  (modules Patterns Translator Ocanren_patterns Sresult Predicate Typespat)
  (name SpecialKanren)
  (preprocess

@@ -1,5 +1,3 @@
-open Typedtree
-
 type 'a sresult =
   | Expr of 'a
   | ReduceConj

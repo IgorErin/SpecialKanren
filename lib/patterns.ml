@@ -444,8 +444,6 @@ module TypesPats = struct
   end
 
   let constructor_description (Pat name) =
-    (* TODO more fields *)
-    let open Asttypes in
     Pat
       (fun x k ->
         let { cstr_name : string (* Constructor name *); _ } = x in

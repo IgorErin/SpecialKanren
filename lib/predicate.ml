@@ -2,7 +2,6 @@ module Helpers = struct
   let exp_by_ident id e =
     let open Patterns in
     let open Gen in
-    let path = PathPat.pident in
     let path_pattern = PathPat.pident id in
     let exp_desc = Expression_desc.texp_ident path_pattern drop drop in
     let p = expression exp_desc drop drop drop drop drop in
