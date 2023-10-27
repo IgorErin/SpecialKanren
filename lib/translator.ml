@@ -53,8 +53,8 @@ let spec_str_item funp parp varp str_item =
            let loc = Location.none in
            Sresult.map ~f @@ (loop e |> Sresult.with_default [%expr []])
          | _ -> assert false)
-      (* list cons *)
-      | Texp_construct (ident, typ_desc, args) when is_disj exp ->
+      (* (::) list cons. assume disj *)
+      | Texp_construct (ident, typ_desc, args) when is_list_cons exp ->
         (match args with
          | [ fst; snd ] ->
            let fst = loop fst in
@@ -66,7 +66,19 @@ let spec_str_item funp parp varp str_item =
            in
            reduce_disj fst snd f
          | _ -> assert false)
-        (* conj *)
+        (* (|||) disj *)
+        | Texp_apply (hd_exp, args) when is_disj hd_exp ->
+          (match args with
+           | [ (flb, Some fexp); (slb, Some sexp) ] ->
+             let fexp = loop fexp in
+             let sexp = loop sexp in
+             let cons x y =
+               let loc = Location.none in
+               [%expr [%e x] ||| [%e y]]
+             in
+             reduce_disj fexp sexp cons
+           | _ -> assert false)
+        (* (&&&) conj *)
       | Texp_apply (hd_exp, args) when is_conj hd_exp ->
         (match args with
          | [ (flb, Some fexp); (slb, Some sexp) ] ->
@@ -121,7 +133,13 @@ let spec_str_item funp parp varp str_item =
             | _ -> (* if not -> erase conj*) ReduceConj)
          | None -> failwith "Abstracted over spec paramter. Not implemented.")
       | Texp_apply (hd, args) when is_fresh hd ->
-        (* if fresh variable unified with parameter -> TODO()
+        (* if fresh variable unified with parameter -> 
+          TODO() 1) collect fresh varialbes when going thorw fresh
+          TODO() 2) collect deleted fresh variables in fresh body
+          TODO() 3) when return. 
+                    create fresh lookup table like (two -> one, etc )
+                    reduce deleted fresh variables creation
+                    count deleted variables and map fresh)
            1) substitute variant in variable uses
            2) remove fresh vraible creation *)
         (match args with
@@ -149,7 +167,6 @@ let spec_str_item funp parp varp str_item =
       | _ when parp#exp exp ->
         let loc = Location.none in
         Expr [%expr !![%e varp#instance]]
-        (* TODO substitute variant *)
       | _ -> Expr (untyp_exp exp)
     in
     loop exp
