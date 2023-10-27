@@ -25,7 +25,7 @@ let createt_test path par fname =
   let cmt = read_cmt path in
   let spec_par = Predicate.par_of_string par in
   let spec_fun = Predicate.fun_of_string fname in
-  let pp = Format.str_formatter in
+  let pp = Format.std_formatter in
   SpecialKanren.Translator.translate pp spec_fun spec_par cmt
 ;;
 

@@ -5,22 +5,28 @@
 (generate_opam_files true)
 
 (source
- (github username/reponame))
+ (github IgorErin/SpecialKanren))
 
-(authors "Author Name")
+(authors "Igor Erin")
 
-(maintainers "Maintainer Name")
+(maintainers "Igor Erin")
 
-(license LICENSE)
-
-(documentation https://url/to/documentation)
+(license MIT)
 
 (package
  (name SpecialKanren)
- (synopsis "A short synopsis")
- (description "A longer description")
- (depends ocaml dune)
- (tags
-  (topics "to describe" your project)))
+ (synopsis "Relational program specializer")
+ (depends 
+   dune
+  (ocaml (>= "4.14"))
+  ocamlfind
+  GT
+  (OCanren (>= "0.3.0~"))
+  (ocamlformat
+   (and
+    (>= "0.26")
+    :with-test))
+  ppx_optcomp
+  ppxlib))
 
 ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project

@@ -1,7 +1,5 @@
 (executable
  (public_name SpecialKanren)
- (flags
-  (:standard -w -32))
  (modules config utils main)
  (name main)
  (libraries SpecialKanren findlib))
