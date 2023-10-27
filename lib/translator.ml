@@ -248,14 +248,14 @@ let parse_of_typed funp parp str_item =
 ;;
 
 (* TODO separate validation *)
-let translate pp funp parp (t : Typedtree.structure) =
+let translate funp parp (t : Typedtree.structure) =
   let count = List.filter (struct_item_predicate funp) t.str_items |> List.length in
   (* check that exist only one such function *)
   match count with
   | _ when count = 1 ->
     let func = parse_of_typed funp parp in
     let str_items = List.map func t.str_items |> List.concat in
-    Pprintast.structure pp str_items
+    str_items
   | _ when count < 0 -> failwith "Fun not found"
   | _ -> failwith "More then one function found"
 ;;

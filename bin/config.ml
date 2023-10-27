@@ -12,6 +12,7 @@ type t =
   ; mutable include_dirs : string list
   ; mutable opens : string list
   ; mutable ff : ff option
+  ; mutable out : string option
   }
 
 let default =
@@ -22,6 +23,7 @@ let default =
   ; include_dirs = []
   ; opens = []
   ; ff = None
+  ; out = None
   }
 ;;
 
@@ -34,6 +36,8 @@ let add_dir d = default.include_dirs <- d :: default.include_dirs
 let add_open o = default.opens <- o :: default.opens
 let cmt () = default.ff <- Some Cmt
 let ml () = default.ff <- Some Ml
+let set_out name = default.out <- Some name
+let get_out () = default.out
 
 let path () =
   match default.path with

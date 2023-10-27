@@ -1,6 +1,6 @@
-open SpecialKanren
-
-let () =
+(* open SpecialKanren *)
+(*
+   let () =
   let () = Clflags.recursive_types := true in
   ()
 ;;
@@ -25,8 +25,8 @@ let createt_test path par fname =
   let cmt = read_cmt path in
   let spec_par = Predicate.par_of_string par in
   let spec_fun = Predicate.fun_of_string fname in
-  let pp = Format.std_formatter in
-  SpecialKanren.Translator.translate pp spec_fun spec_par cmt
+  let items = SpecialKanren.Translator.translate spec_fun spec_par cmt in 
+  Pprintast.structure Format.std_formatter items
 ;;
 
 (* end of copypast *)
@@ -141,4 +141,4 @@ let%expect_test _ =
           (x === (!! false)) &&& (opt === (!! (Some 0)))]
       let is_none_None x = conde [x === (!! true)]
       let is_none_Some x = conde [x === (!! false)]|}]
-;;
+;; *)

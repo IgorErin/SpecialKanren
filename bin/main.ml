@@ -12,6 +12,7 @@ let options =
   ; "-v", Arg.Unit verbose_on, "Set verbose on"
   ; "-cmt", Arg.Unit cmt, "Set file format"
   ; "-ml", Arg.Unit ml, "Set file format"
+  ; "-o", Arg.String set_out, "Set output file name"
   ]
 ;;
 
@@ -59,16 +60,26 @@ let () =
   let path = Config.path () in
   let par = Config.param () in
   let fname = Config.fname () in
+  let out = Config.get_out () in
   if Config.verbose () then Printf.printf "path: %s\npar: %s\nfname: %s%!" path par fname;
   let parp = Predicate.par_of_string par in
   let funp = Predicate.fun_of_string fname in
   let ff = Config.ff () in
-  let pp = Format.std_formatter in
-  match ff with
-  | Ml ->
-    let str = read_ml path in
-    SpecialKanren.Translator.translate pp funp parp str
-  | Cmt ->
-    let str = read_cmt path in
-    SpecialKanren.Translator.translate pp funp parp str
+  let items =
+    match ff with
+    | Ml ->
+      let str = read_ml path in
+      SpecialKanren.Translator.translate funp parp str
+    | Cmt ->
+      let str = read_cmt path in
+      SpecialKanren.Translator.translate funp parp str
+  in
+  match out with
+  | Some output_name ->
+    let ch = open_out output_name in
+    let fmt = Format.formatter_of_out_channel ch in
+    Format.pp_set_margin fmt 180;
+    Pprintast.structure fmt items;
+    Format.fprintf fmt "%!"
+  | None -> Pprintast.structure Format.std_formatter items
 ;;
