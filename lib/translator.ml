@@ -2,15 +2,31 @@ open Typedtree
 open Ocanren_patterns
 open Sresult
 
-(* 1) find spec_fun in struct_item list
-   2) call spec_fun on her arguments
-   3) modify fun_predicate with fun name Ident *)
+let assert_bin args =
+  match args with
+  | [ fst; snd ] -> fst, snd
+  | _ -> assert false
+;;
+
+let assert_bin_args args =
+  match args with
+  | [ (_, Some fexp); (_, Some sexp) ] -> fexp, sexp
+  | _ -> assert false
+;;
+
+let ident_of_string name =
+  let open Ast_helper in
+  let lid = Longident.Lident name in
+  let loc = Location.mkloc lid Location.none in
+  Exp.ident loc
+;;
+
 let spec_str_item funp parp varp str_item =
   let open Ast_helper in
   let open Typedtree in
   let var_variant f s = parp#exp f && varp#this s in
   let var_another_variant f s = parp#exp f && varp#another s in
-  let new_name old = old ^ "_" ^ varp#name in
+  let new_name = funp#name ^ "_" ^ varp#name in
   let untyp_exp = Untypeast.untype_expression in
   let spec_exp exp =
     let rec loop exp : Parsetree.expression sresult =
@@ -50,96 +66,80 @@ let spec_str_item funp parp varp str_item =
          | _ -> assert false)
       (* (::) list cons. assume disj *)
       | Texp_construct (_, _, args) when is_list_cons exp ->
-        (match args with
-         | [ fst; snd ] ->
-           let fst = loop fst in
-           let snd = loop snd in
-           let f x y =
-             let loc = Location.none in
-             [%expr [%e x] :: [%e y]]
-           in
-           reduce_disj fst snd f
-         | _ -> assert false)
+        let fst, snd = assert_bin args in
+        let fst = loop fst in
+        let snd = loop snd in
+        let f x y =
+          let loc = Location.none in
+          [%expr [%e x] :: [%e y]]
+        in
+        reduce_disj fst snd f
       (* (|||) disj *)
       | Texp_apply (hd_exp, args) when is_disj hd_exp ->
-        (match args with
-         | [ (_, Some fexp); (_, Some sexp) ] ->
-           let fexp = loop fexp in
-           let sexp = loop sexp in
-           let cons x y =
-             let loc = Location.none in
-             [%expr [%e x] ||| [%e y]]
-           in
-           reduce_disj fexp sexp cons
-         | _ -> assert false)
+        let fexp, sexp = assert_bin_args args in
+        let fexp = loop fexp in
+        let sexp = loop sexp in
+        let cons x y =
+          let loc = Location.none in
+          [%expr [%e x] ||| [%e y]]
+        in
+        reduce_disj fexp sexp cons
         (* (&&&) conj *)
       | Texp_apply (hd_exp, args) when is_conj hd_exp ->
-        (match args with
-         | [ (_, Some fexp); (_, Some sexp) ] ->
-           let fexp = loop fexp in
-           let sexp = loop sexp in
-           let cons x y =
-             let loc = Location.none in
-             [%expr [%e x] &&& [%e y]]
-           in
-           reduce_conj fexp sexp cons
-         | _ -> assert false)
+        let fexp, sexp = assert_bin_args args in
+        let fexp = loop fexp in
+        let sexp = loop sexp in
+        let cons x y =
+          let loc = Location.none in
+          [%expr [%e x] &&& [%e y]]
+        in
+        reduce_conj fexp sexp cons
       (* === *)
       | Texp_apply (hd_exp, args) when is_unify hd_exp ->
-        (match args with
-         | [ (_, Some fexp); (_, Some sexp) ] ->
-           (match () with
-            | () when var_variant fexp sexp || var_variant sexp fexp -> Empty
-            | () when var_another_variant fexp sexp || var_another_variant sexp fexp ->
-              ReduceConj
-            | _ -> Expr (untyp_exp exp))
-         | _ -> assert false)
+        let fexp, sexp = assert_bin_args args in
+        (match () with
+         | () when var_variant fexp sexp || var_variant sexp fexp -> Empty
+         | () when var_another_variant fexp sexp || var_another_variant sexp fexp ->
+           ReduceConj
+         | _ -> Expr (untyp_exp exp))
       (* =/= *)
       | Texp_apply (hd_exp, args) when is_nunify hd_exp ->
-        (match args with
-         | [ (_, Some fexp); (_, Some sexp) ] ->
-           (match () with
-            | () when var_variant fexp sexp || var_variant sexp fexp -> ReduceConj
-            | () when var_another_variant fexp sexp || var_another_variant sexp fexp ->
-              Empty
-            | _ -> Expr (untyp_exp exp))
-         | _ -> assert false)
+        let fexp, sexp = assert_bin_args args in
+        (match () with
+         | () when var_variant fexp sexp || var_variant sexp fexp -> ReduceConj
+         | () when var_another_variant fexp sexp || var_another_variant sexp fexp -> Empty
+         | _ -> Expr (untyp_exp exp))
       (* rec call *)
       | Texp_apply (hd_exp, ls) when funp#exp hd_exp ->
         let _, arg = List.nth ls parp#number in
         (match arg with
          | Some arg ->
-           (* 1) if spec param -> delete arg
-              2) if spec variant -> delete arg
-              TODO() 3) if another variable -> unify that variable with variant conj
-              TODO() 4) if another variant -> reduce conj *)
+           let app_without_param =
+             let new_args =
+               ls
+               |> List.filteri (fun i _ -> i <> parp#number)
+               |> List.filter_map (fun (lb, vl) ->
+                 Option.map (fun x -> lb, Sresult.get @@ loop x) vl)
+             in
+             let hd = ident_of_string new_name in
+             Exp.apply hd new_args
+           in
            (match () with
             | () when parp#exp arg || varp#this arg ->
-              (* delete if equal number *)
-              let new_args =
-                ls
-                |> List.filteri (fun i _ -> i <> parp#number)
-                |> List.filter_map (fun (lb, vl) ->
-                  Option.map (fun x -> lb, Sresult.get @@ loop x) vl)
-              in
-              let hd =
-                let lid = Longident.Lident (new_name funp#name) in
-                let loc = Location.mkloc lid Location.none in
-                Exp.ident loc
-              in
-              Expr (Exp.apply hd new_args)
-            | _ -> (* if not -> erase conj*) ReduceConj)
+              (* simply delete argument by number (is it correct???) *)
+              Expr app_without_param
+            | () when varp#another arg ->
+              (* if another variant in place of spec par -> reduce conj *)
+              ReduceConj
+              (* if some_var -> add (some_var === spec_variant) in conj with apply *)
+            | () ->
+              let loc = Location.none in
+              Expr
+                [%expr
+                  [%e app_without_param] &&& ([%e untyp_exp arg] === !!varp#instance)])
          | None -> failwith "Abstracted over spec paramter. Not implemented.")
       | Texp_apply (hd, args) when is_fresh hd ->
-        (* if fresh variable unified with parameter ->
-           TODO() 1) collect fresh varialbes when going thorw fresh
-           TODO() 2) collect deleted fresh variables in fresh body
-           TODO() 3) when return.
-           create fresh lookup table like (two -> one, etc )
-           reduce deleted fresh variables creation
-           count deleted variables and map fresh)
-           1) substitute variant in variable uses
-           2) remove fresh vraible creation *)
+        (* TODO if fresh var unif with variant *)
         (match args with
          | [ (lb, Some e) ] ->
            let f x = Exp.apply (untyp_exp hd) [ lb, x ] in
@@ -148,16 +148,11 @@ let spec_str_item funp parp varp str_item =
       | Texp_apply (hd, args) ->
         let hd = untyp_exp hd in
         let args =
-          List.map
+          List.filter_map
             (fun (lb, x) ->
-              let x = Option.bind x (fun x -> loop x |> Sresult.to_opt) in
-              lb, x)
+              Option.bind x (fun x ->
+                loop x |> Sresult.map ~f:(fun x -> lb, x) |> Sresult.to_opt))
             args
-          |> List.filter_map (fun (lb, x) ->
-            x
-            |> function
-            | Some x -> Some (lb, x)
-            | _ -> None)
         in
         Expr (Exp.apply hd args)
       (* paramter -> variant *)
@@ -172,7 +167,7 @@ let spec_str_item funp parp varp str_item =
     let open Parsetree in
     match ppat_desc with
     | Ppat_var ident ->
-      let txt = new_name ident.txt in
+      let txt = new_name in
       Pat.var { ident with txt }
     | _ -> failwith "Var expected"
   in

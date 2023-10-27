@@ -15,12 +15,10 @@ let path_of_constr texp =
 
 let look env path = Env.find_type path env
 
-let get_manifest Types.{ type_manifest; type_arity; _ } =
+let get_manifest Types.{ type_manifest; _ } =
   match type_manifest with
   | Some x -> x
-  | None ->
-    Printf.printf "arity = %d" type_arity;
-    failwith "Empty manifest"
+  | None -> failwith "Empty manifest"
 ;;
 
 let get_variants Types.{ type_kind; _ } =
