@@ -10,6 +10,7 @@ let spec_str_item funp parp varp str_item =
   let open Typedtree in
   let var_variant f s = parp#exp f && varp#this s in
   let var_another_variant f s = parp#exp f && varp#another s in
+  let new_name old = old ^ "_" ^ varp#name in
   let untyp_exp = Untypeast.untype_expression in
   let spec_exp exp =
     let rec loop exp : Parsetree.expression sresult =
@@ -121,7 +122,11 @@ let spec_str_item funp parp varp str_item =
                 |> List.filter_map (fun (lb, vl) ->
                   Option.map (fun x -> lb, Sresult.get @@ loop x) vl)
               in
-              let hd = untyp_exp hd_exp in
+              let hd =
+                let lid = Longident.Lident (new_name funp#name) in
+                let loc = Location.mkloc lid Location.none in
+                Exp.ident loc
+              in
               Expr (Exp.apply hd new_args)
             | _ -> (* if not -> erase conj*) ReduceConj)
          | None -> failwith "Abstracted over spec paramter. Not implemented.")
@@ -167,7 +172,7 @@ let spec_str_item funp parp varp str_item =
     let open Parsetree in
     match ppat_desc with
     | Ppat_var ident ->
-      let txt = ident.txt ^ "_" ^ varp#name in
+      let txt = new_name ident.txt in
       Pat.var { ident with txt }
     | _ -> failwith "Var expected"
   in
