@@ -47,12 +47,6 @@ let get_cons type_exp env =
   skip_ilogic type_exp
   |> path_of_constr
   |> look env
-  (* |> get_manifest
-     |> path_of_constr
-     |> look env *)
-  (* |> get_manifest
-     |> path_of_constr
-     |> look env *)
   |> get_variants
   |> List.map (fun { cd_id; _ } -> Env.find_ident_constructor cd_id env)
 ;;

@@ -126,3 +126,19 @@ let%expect_test _ =
       let myfun_false x y = conde [y === (succ o); rel x y (!! false)]
       let myfun_true x y = conde [x === o; rel x y (!! true)] |}]
 ;;
+
+let%expect_test _ =
+  createt_test
+    "../../../../default/samples/.opt.eobjs/native/dune__exe__Opt.cmt"
+    "opt"
+    "is_none";
+  [%expect
+    {|
+      open OCanren
+      let is_none x opt =
+        conde
+          [(x === (!! true)) &&& (opt === (!! None));
+          (x === (!! false)) &&& (opt === (!! (Some 0)))]
+      let is_none_None x = conde [x === (!! true)]
+      let is_none_Some x = conde [x === (!! false)]|}]
+;;
