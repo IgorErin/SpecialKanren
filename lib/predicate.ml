@@ -18,7 +18,7 @@ let par_of_string name =
 let var_of_constr_desc desc all =
   let open Typedtree in
   let open Types in
-  let eq { cstr_name = fst; _ } { cstr_name = snd; _ } = String.equal fst snd in
+  let eq fst snd = Types.may_equal_constr fst snd in
   let get_cons e =
     match e.exp_desc with
     | Texp_construct (_, cd, _) -> Some cd

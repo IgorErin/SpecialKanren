@@ -2,10 +2,6 @@ open Typedtree
 open Ocanren_patterns
 open Sresult
 
-(* TODO() check that exist only one such function *)
-
-let ( >> ) f g x = f x |> g
-
 (* 1) find spec_fun in struct_item list
    2) call spec_fun on her arguments
    3) modify fun_predicate with fun name Ident *)
@@ -26,7 +22,7 @@ let spec_str_item funp parp varp str_item =
         let c_lhs = untype_pattern c_lhs in
         let c_guard = Option.map untype_expression c_guard in
         let c_rhs = loop c_rhs in
-        (* TODO *)
+        (* TODO what in another cases ??? *)
         (match c_rhs with
          | Expr c_rhs -> Exp.fun_ arg_label c_guard c_lhs c_rhs |> fun x -> Expr x
          | _ -> c_rhs)
