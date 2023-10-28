@@ -33,7 +33,7 @@ let reduce_disj fst snd cons =
 
 let get = function
   | Expr x -> x
-  | _ -> failwith "Expr expected."
+  | _ -> invalid_arg "Expr expected."
 ;;
 
 let is_reduce_conj = function
@@ -46,7 +46,14 @@ let with_default x = function
   | _ -> Expr x
 ;;
 
+let get_with_default d = function
+  | Expr x -> x
+  | _ -> d
+;;
+
 let to_opt = function
   | Expr x -> Some x
   | _ -> None
 ;;
+
+let expr x = Expr x

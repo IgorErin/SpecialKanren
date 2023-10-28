@@ -1,6 +1,9 @@
 open Typedtree
 
-exception Not_implemented
+exception Not_implemented of string
+exception Fun_not_found
+exception Par_not_found
+exception MT1_fun_found
 
 let vbs_of_tstr_opt (t : structure_item) =
   match t.str_desc with
@@ -11,7 +14,7 @@ let vbs_of_tstr_opt (t : structure_item) =
 let ident_of_vb vb =
   match vb.vb_pat.pat_desc with
   | Tpat_var (ident, _) -> ident
-  | _ -> raise Not_implemented
+  | _ -> raise @@ Not_implemented "Only var pattern in value binding supported"
 ;;
 
 let parameter_check parp str =
@@ -25,7 +28,7 @@ let parameter_check parp str =
         let variants = Typespat.get_cons c_lhs.pat_type c_lhs.pat_env in
         Some (parp, variants))
       else loop (count + 1) c_rhs
-    | Texp_function _ -> raise Not_implemented
+    | Texp_function _ -> raise @@ Not_implemented "Only one case functions supported"
     | _ -> None
   in
   loop 0 str
@@ -37,7 +40,7 @@ let function_check funp parp (t : Typedtree.structure) =
   |> List.filter_map vbs_of_tstr_opt
   |> List.find_all @@ List.exists (ident_of_vb >> funp)
   |> function
-  | [] -> raise Not_found
+  | [] -> raise Fun_not_found
   | [ vbs ] ->
     (match vbs with
      | [] -> assert false
@@ -47,7 +50,7 @@ let function_check funp parp (t : Typedtree.structure) =
        parameter_check parp vb.vb_expr
        |> (function
        | Some (parp, variants) -> funp, parp, variants
-       | None -> raise Not_found)
-     | _ :: _ -> raise Not_implemented)
-  | _ :: _ -> failwith "Found more than one"
+       | None -> raise Par_not_found)
+     | _ :: _ -> raise @@ Not_implemented "Only non mutually recursive funtions supported")
+  | _ :: _ -> raise MT1_fun_found
 ;;

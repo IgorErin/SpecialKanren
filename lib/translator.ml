@@ -2,17 +2,24 @@ open Typedtree
 open Ocanren_patterns
 open Sresult
 
-let assert_bin args =
-  match args with
-  | [ fst; snd ] -> fst, snd
-  | _ -> assert false
-;;
+module Assert = struct
+  let bin args =
+    match args with
+    | [ fst; snd ] -> fst, snd
+    | _ -> assert false
+  ;;
 
-let assert_bin_args args =
-  match args with
-  | [ (_, Some fexp); (_, Some sexp) ] -> fexp, sexp
-  | _ -> assert false
-;;
+  let bin_args args =
+    match args with
+    | [ (_, Some fexp); (_, Some sexp) ] -> fexp, sexp
+    | _ -> assert false
+  ;;
+
+  let lb_arg = function
+    | [ (lb, Some arg) ] -> lb, arg
+    | _ -> assert false
+  ;;
+end
 
 let ident_of_string name =
   let open Ast_helper in
@@ -29,7 +36,18 @@ let var_with_name new_name Parsetree.{ ppat_desc; _ } =
   | _ -> failwith "Var expected"
 ;;
 
+let exp_failwith =
+  let loc = Location.none in
+  [%expr failwith "Relation reduced"]
+;;
+
+let inj_instance p =
+  let loc = Location.none in
+  Expr [%expr !![%e p#instance]]
+;;
+
 exception Unexpected_structure
+exception Not_implemeted of string
 
 let spec_str_item funp parp varp str_item =
   let open Ast_helper in
@@ -63,10 +81,11 @@ let spec_str_item funp parp varp str_item =
             let c_guard = Option.map untype_expression c_guard in
             let c_rhs = Sresult.get @@ loop c_rhs in
             (* TODO get above *)
+            (* seems like we should create wildcard case with assert false *)
             Exp.case c_lhs ?guard:c_guard c_rhs)
           cases
         |> Exp.function_
-        |> fun x -> Expr x
+        |> Sresult.expr
         (* conde *)
       | Texp_apply (hd_exp, args) when is_conde hd_exp ->
         (match args with
@@ -78,7 +97,7 @@ let spec_str_item funp parp varp str_item =
          | _ -> assert false)
       (* (::) list cons. assume disj *)
       | Texp_construct (_, _, args) when is_list_cons exp ->
-        let fst, snd = assert_bin args in
+        let fst, snd = Assert.bin args in
         let fst = loop fst in
         let snd = loop snd in
         let f x y =
@@ -88,7 +107,7 @@ let spec_str_item funp parp varp str_item =
         reduce_disj fst snd f
       (* (|||) disj *)
       | Texp_apply (hd_exp, args) when is_disj hd_exp ->
-        let fexp, sexp = assert_bin_args args in
+        let fexp, sexp = Assert.bin_args args in
         let fexp = loop fexp in
         let sexp = loop sexp in
         let cons x y =
@@ -98,7 +117,7 @@ let spec_str_item funp parp varp str_item =
         reduce_disj fexp sexp cons
         (* (&&&) conj *)
       | Texp_apply (hd_exp, args) when is_conj hd_exp ->
-        let fexp, sexp = assert_bin_args args in
+        let fexp, sexp = Assert.bin_args args in
         let fexp = loop fexp in
         let sexp = loop sexp in
         let cons x y =
@@ -108,14 +127,14 @@ let spec_str_item funp parp varp str_item =
         reduce_conj fexp sexp cons
       (* === *)
       | Texp_apply (hd_exp, args) when is_unify hd_exp ->
-        let fexp, sexp = assert_bin_args args in
+        let fexp, sexp = Assert.bin_args args in
         (match () with
          | () when var_variant fexp sexp -> Empty
          | () when var_another_variant fexp sexp -> ReduceConj
          | _ -> Expr (untyp_exp exp))
       (* =/= *)
       | Texp_apply (hd_exp, args) when is_nunify hd_exp ->
-        let fexp, sexp = assert_bin_args args in
+        let fexp, sexp = Assert.bin_args args in
         (match () with
          | () when var_variant fexp sexp -> ReduceConj
          | () when var_another_variant fexp sexp -> Empty
@@ -148,14 +167,12 @@ let spec_str_item funp parp varp str_item =
               Expr
                 [%expr
                   [%e app_without_param] &&& ([%e untyp_exp arg] === !!varp#instance)])
-         | None -> failwith "Abstracted over spec paramter. Not implemented.")
+         | None -> raise @@ Not_implemeted "Abstracted over spec paramter.")
       | Texp_apply (hd, args) when is_fresh hd ->
         (* TODO if fresh var unif with variant *)
-        (match args with
-         | [ (lb, Some e) ] ->
-           let f x = Exp.apply (untyp_exp hd) [ lb, x ] in
-           loop e |> Sresult.map ~f
-         | _ -> assert false)
+        let lb, e = Assert.lb_arg args in
+        let f x = Exp.apply (untyp_exp hd) [ lb, x ] in
+        loop e |> Sresult.map ~f
       | Texp_apply (hd, args) ->
         let hd = untyp_exp hd in
         let args =
@@ -167,9 +184,7 @@ let spec_str_item funp parp varp str_item =
         in
         Expr (Exp.apply hd args)
       (* paramter -> variant *)
-      | _ when parp#exp exp ->
-        let loc = Location.none in
-        Expr [%expr !![%e varp#instance]]
+      | _ when parp#exp exp -> inj_instance varp
       | _ -> Expr (untyp_exp exp)
     in
     loop exp
@@ -178,13 +193,9 @@ let spec_str_item funp parp varp str_item =
   | Tstr_value (recf, [ vb ]) ->
     let pat = Untypeast.untype_pattern vb.vb_pat |> var_with_name new_name in
     spec_exp vb.vb_expr
-    |> (function
-         | Expr e -> e
-         | _ ->
-           let loc = Location.none in
-           [%expr failwith "Relation reduced"])
+    |> Sresult.get_with_default exp_failwith
     |> fun x -> Str.value recf [ Vb.mk pat x ]
-  | Tstr_value _ -> 
+  | Tstr_value _ ->
     (* should be checked at validating *)
     assert false
   | _ -> raise Unexpected_structure
