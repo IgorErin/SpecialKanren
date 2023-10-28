@@ -1,6 +1,13 @@
 (library
  (libraries base compiler-libs.common)
- (modules Patterns Translator Ocanren_patterns Sresult Predicate Typespat)
+ (modules
+  Patterns
+  Translator
+  Ocanren_patterns
+  Sresult
+  Predicate
+  Typespat
+  Validate)
  (name SpecialKanren)
  (preprocess
   (pps ppxlib.metaquot ppx_optcomp)))

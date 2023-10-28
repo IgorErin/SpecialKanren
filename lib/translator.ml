@@ -60,7 +60,7 @@ let spec_str_item funp parp varp str_item =
             let c_lhs = untype_pattern c_lhs in
             let c_guard = Option.map untype_expression c_guard in
             let c_rhs = Sresult.get @@ loop c_rhs in
-            (* TODO *)
+            (* TODO get above *)
             Exp.case c_lhs ?guard:c_guard c_rhs)
           cases
         |> Exp.function_
@@ -181,136 +181,45 @@ let spec_str_item funp parp varp str_item =
   | _ -> failwith "Incorrect structure"
 ;;
 
-module Validate = struct
-  exception Not_implemented
-
-  let vbs_of_tstr_value_opt (t : structure_item) =
-    match t.str_desc with
-    | Tstr_value (_, vbs) -> Some vbs
+module Frontend = struct
+  let ident_of_vb_opt vb =
+    match vb.vb_pat.pat_desc with
+    | Tpat_var (ident, _) -> Some ident
     | _ -> None
   ;;
 
-  let ident_of_vb vb =
-    match vb.vb_pat.pat_desc with
-    | Tpat_var (ident, _) -> ident
-    | _ -> raise Not_implemented
+  let struct_item_predicate funp str =
+    match str.str_desc with
+    | Tstr_value (_, [ vb ]) ->
+      ident_of_vb_opt vb
+      |> (function
+      | Some ident -> funp#ident ident
+      | None -> false)
+    | _ -> false
   ;;
 
-  let parameter_check parp str =
-    let rec loop count exp =
-      let open Typedtree in
-      match exp.exp_desc with
-      | Texp_function { param; cases = [ { c_rhs; _ } ]; _ } ->
-        if parp param
-        then (
-          let parp = Predicate.par_of_ident param count in
-          let variants = Typespat.get_cons c_rhs.exp_type c_rhs.exp_env in
-          Some (parp, variants))
-        else loop (count + 1) c_rhs
-      | Texp_function _ -> raise Not_implemented
-      | _ -> None
+  let map_typed_item funp parp variants str_item =
+    let untyped_str_item =
+      let mapper = Untypeast.default_mapper in
+      mapper.structure_item mapper
     in
-    loop 0 str
-  ;;
-
-  let function_check funp parp (t : Typedtree.structure) =
-    let ( >> ) f g x = f x |> g in
-    t.str_items
-    |> List.filter_map vbs_of_tstr_value_opt
-    |> List.find_all @@ List.exists (ident_of_vb >> funp)
-    |> function
-    | [] -> raise Not_found
-    | [ vbs ] ->
-      (match vbs with
-       | [] -> assert false
-       | [ vb ] ->
-         let ident = ident_of_vb vb in
-         let funp = Predicate.fun_of_ident ident in
-         parameter_check parp vb.vb_expr
-         |> (function
-         | Some (parp, variants) -> funp, parp, variants
-         | None -> raise Not_found)
-       | _ :: _ -> raise Not_implemented)
-    | _ :: _ -> failwith "Found more than one"
+    let p = struct_item_predicate funp in
+    if p str_item
+    then (
+      let specs =
+        (* spec for each variant *)
+        variants
+        |> List.map (fun variant ->
+          let varp = Predicate.var_of_constr_desc variant variants in
+          spec_str_item funp parp varp str_item)
+      in
+      let source = untyped_str_item str_item in
+      source :: specs)
+    else untyped_str_item str_item |> fun x -> [ x ]
   ;;
 end
 
-let collect_info parp (s : Typedtree.structure_item) =
-  let get_variants p =
-    let get_type { c_lhs = { pat_type; pat_env; _ }; _ } = pat_type, pat_env in
-    let rec loop count e =
-      match e.exp_desc with
-      | Texp_function { param; cases = [ ({ c_rhs; _ } as c) ]; _ } ->
-        if p param
-        then (
-          let ty, env = get_type c in
-          let variants = Typespat.get_cons ty env in
-          let parp = Predicate.par_of_ident param count in
-          Some (parp, variants))
-        else loop (count + 1) c_rhs
-      | Texp_function _ -> failwith "Not implemented"
-      | _ -> None
-    in
-    loop 0
-  in
-  let collect parp str_item =
-    let ident_of_pattern = function
-      | { pat_desc = Tpat_var (id, _); _ } -> id
-      | _ -> failwith "Var expected."
-    in
-    match str_item.str_desc with
-    (* one binding *)
-    | Tstr_value (_, [ vb ]) ->
-      let fun_ident = ident_of_pattern vb.vb_pat in
-      let funp = Predicate.fun_of_ident fun_ident in
-      let cons = get_variants parp#ident vb.vb_expr in
-      (match cons with
-       | Some (parp, variants) -> funp, parp, variants
-       | None -> failwith "Parameter not found.")
-    | Tstr_value _ -> raise Not_implemented
-    | _ -> failwith "Not implemented"
-  in
-  collect parp s
-;;
-
-let struct_item_predicate funp str =
-  match str.str_desc with
-  | Tstr_value (_, vbl) when List.exists (fun x -> funp#pat x.vb_pat) vbl ->
-    if List.length vbl > 1 then failwith "Mutual rec functions not supported.";
-    true
-  | _ -> false
-;;
-
-let parse_of_typed funp parp str_item =
-  let untyped_str =
-    let mapper = Untypeast.default_mapper in
-    mapper.structure_item mapper
-  in
-  let p = struct_item_predicate funp in
-  if p str_item
-  then (
-    let funp, parp, variants = collect_info parp str_item in
-    let specs =
-      (* spec for each variant *)
-      List.map
-        (fun variant ->
-          let varp = Predicate.var_of_constr_desc variant variants in
-          spec_str_item funp parp varp str_item)
-        variants
-    in
-    untyped_str str_item :: specs)
-  else untyped_str str_item |> fun x -> [ x ]
-;;
-
-(* TODO separate validation *)
 let translate funp parp (t : Typedtree.structure) =
-  let count = List.filter (struct_item_predicate funp) t.str_items |> List.length in
-  (* check that exist only one such function *)
-  match count with
-  | _ when count = 1 ->
-    let func = parse_of_typed funp parp in
-    let str_items = List.map func t.str_items |> List.concat in
-    str_items
-  | _ when count < 0 -> failwith "Fun not found"
-  | _ -> failwith "More then one function found"
+  let funp, parp, variants = Validate.function_check funp#ident parp#ident t in
+  t.str_items |> List.map (Frontend.map_typed_item funp parp variants) |> List.concat
 ;;
