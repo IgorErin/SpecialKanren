@@ -21,11 +21,21 @@ let ident_of_string name =
   Exp.ident loc
 ;;
 
+let var_with_name new_name Parsetree.{ ppat_desc; _ } =
+  let open Ast_helper in
+  let open Parsetree in
+  match ppat_desc with
+  | Ppat_var ident -> Pat.var { ident with txt = new_name }
+  | _ -> failwith "Var expected"
+;;
+
 let spec_str_item funp parp varp str_item =
   let open Ast_helper in
   let open Typedtree in
-  let var_variant f s = parp#exp f && varp#this s in
-  let var_another_variant f s = parp#exp f && varp#another s in
+  let var_variant f s = (parp#exp f && varp#this s) || (parp#exp s && varp#this f) in
+  let var_another_variant f s =
+    (parp#exp f && varp#another s) || (parp#exp s && varp#another f)
+  in
   let new_name = funp#name ^ "_" ^ varp#name in
   let untyp_exp = Untypeast.untype_expression in
   let spec_exp exp =
@@ -98,16 +108,15 @@ let spec_str_item funp parp varp str_item =
       | Texp_apply (hd_exp, args) when is_unify hd_exp ->
         let fexp, sexp = assert_bin_args args in
         (match () with
-         | () when var_variant fexp sexp || var_variant sexp fexp -> Empty
-         | () when var_another_variant fexp sexp || var_another_variant sexp fexp ->
-           ReduceConj
+         | () when var_variant fexp sexp -> Empty
+         | () when var_another_variant fexp sexp -> ReduceConj
          | _ -> Expr (untyp_exp exp))
       (* =/= *)
       | Texp_apply (hd_exp, args) when is_nunify hd_exp ->
         let fexp, sexp = assert_bin_args args in
         (match () with
-         | () when var_variant fexp sexp || var_variant sexp fexp -> ReduceConj
-         | () when var_another_variant fexp sexp || var_another_variant sexp fexp -> Empty
+         | () when var_variant fexp sexp -> ReduceConj
+         | () when var_another_variant fexp sexp -> Empty
          | _ -> Expr (untyp_exp exp))
       (* rec call *)
       | Texp_apply (hd_exp, ls) when funp#exp hd_exp ->
@@ -163,24 +172,70 @@ let spec_str_item funp parp varp str_item =
     in
     loop exp
   in
-  let map_pat Parsetree.{ ppat_desc; _ } =
-    let open Parsetree in
-    match ppat_desc with
-    | Ppat_var ident ->
-      let txt = new_name in
-      Pat.var { ident with txt }
-    | _ -> failwith "Var expected"
-  in
   match str_item.str_desc with
   | Tstr_value (recf, [ vb ]) ->
-    let pat = Untypeast.untype_pattern vb.vb_pat |> map_pat in
+    let pat = Untypeast.untype_pattern vb.vb_pat |> var_with_name new_name in
     let vb = Vb.mk pat @@ Sresult.get (spec_exp vb.vb_expr) in
     Str.value recf [ vb ]
   | Tstr_value _ -> assert false
   | _ -> failwith "Incorrect structure"
 ;;
 
-let collect_info funp parp (s : Typedtree.structure_item) =
+module Validate = struct
+  exception Not_implemented
+
+  let vbs_of_tstr_value_opt (t : structure_item) =
+    match t.str_desc with
+    | Tstr_value (_, vbs) -> Some vbs
+    | _ -> None
+  ;;
+
+  let ident_of_vb vb =
+    match vb.vb_pat.pat_desc with
+    | Tpat_var (ident, _) -> ident
+    | _ -> raise Not_implemented
+  ;;
+
+  let parameter_check parp str =
+    let rec loop count exp =
+      let open Typedtree in
+      match exp.exp_desc with
+      | Texp_function { param; cases = [ { c_rhs; _ } ]; _ } ->
+        if parp param
+        then (
+          let parp = Predicate.par_of_ident param count in
+          let variants = Typespat.get_cons c_rhs.exp_type c_rhs.exp_env in
+          Some (parp, variants))
+        else loop (count + 1) c_rhs
+      | Texp_function _ -> raise Not_implemented
+      | _ -> None
+    in
+    loop 0 str
+  ;;
+
+  let function_check funp parp (t : Typedtree.structure) =
+    let ( >> ) f g x = f x |> g in
+    t.str_items
+    |> List.filter_map vbs_of_tstr_value_opt
+    |> List.find_all @@ List.exists (ident_of_vb >> funp)
+    |> function
+    | [] -> raise Not_found
+    | [ vbs ] ->
+      (match vbs with
+       | [] -> assert false
+       | [ vb ] ->
+         let ident = ident_of_vb vb in
+         let funp = Predicate.fun_of_ident ident in
+         parameter_check parp vb.vb_expr
+         |> (function
+         | Some (parp, variants) -> funp, parp, variants
+         | None -> raise Not_found)
+       | _ :: _ -> raise Not_implemented)
+    | _ :: _ -> failwith "Found more than one"
+  ;;
+end
+
+let collect_info parp (s : Typedtree.structure_item) =
   let get_variants p =
     let get_type { c_lhs = { pat_type; pat_env; _ }; _ } = pat_type, pat_env in
     let rec loop count e =
@@ -193,12 +248,12 @@ let collect_info funp parp (s : Typedtree.structure_item) =
           let parp = Predicate.par_of_ident param count in
           Some (parp, variants))
         else loop (count + 1) c_rhs
-      | Texp_function _ -> assert false
+      | Texp_function _ -> failwith "Not implemented"
       | _ -> None
     in
     loop 0
   in
-  let collect _ parp str_item =
+  let collect parp str_item =
     let ident_of_pattern = function
       | { pat_desc = Tpat_var (id, _); _ } -> id
       | _ -> failwith "Var expected."
@@ -212,10 +267,10 @@ let collect_info funp parp (s : Typedtree.structure_item) =
       (match cons with
        | Some (parp, variants) -> funp, parp, variants
        | None -> failwith "Parameter not found.")
-    | Tstr_value _ -> assert false
+    | Tstr_value _ -> raise Not_implemented
     | _ -> failwith "Not implemented"
   in
-  collect funp parp s
+  collect parp s
 ;;
 
 let struct_item_predicate funp str =
@@ -234,7 +289,7 @@ let parse_of_typed funp parp str_item =
   let p = struct_item_predicate funp in
   if p str_item
   then (
-    let funp, parp, variants = collect_info funp parp str_item in
+    let funp, parp, variants = collect_info parp str_item in
     let specs =
       (* spec for each variant *)
       List.map
