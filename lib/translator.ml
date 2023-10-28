@@ -29,6 +29,8 @@ let var_with_name new_name Parsetree.{ ppat_desc; _ } =
   | _ -> failwith "Var expected"
 ;;
 
+exception Unexpected_structure
+
 let spec_str_item funp parp varp str_item =
   let open Ast_helper in
   let open Typedtree in
@@ -175,10 +177,17 @@ let spec_str_item funp parp varp str_item =
   match str_item.str_desc with
   | Tstr_value (recf, [ vb ]) ->
     let pat = Untypeast.untype_pattern vb.vb_pat |> var_with_name new_name in
-    let vb = Vb.mk pat @@ Sresult.get (spec_exp vb.vb_expr) in
-    Str.value recf [ vb ]
-  | Tstr_value _ -> assert false
-  | _ -> failwith "Incorrect structure"
+    spec_exp vb.vb_expr
+    |> (function
+         | Expr e -> e
+         | _ ->
+           let loc = Location.none in
+           [%expr failwith "Relation reduced"])
+    |> fun x -> Str.value recf [ Vb.mk pat x ]
+  | Tstr_value _ -> 
+    (* should be checked at validating *)
+    assert false
+  | _ -> raise Unexpected_structure
 ;;
 
 module Frontend = struct
