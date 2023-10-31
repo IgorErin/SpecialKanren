@@ -1,5 +1,5 @@
 (library
- (libraries base compiler-libs.common OCanren)
+ (libraries base core compiler-libs.common OCanren)
  (modules
   Assert
   Semant

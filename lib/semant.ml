@@ -1,4 +1,3 @@
-open Sresult
 open Ocanren_patterns
 
 type value =
@@ -44,8 +43,6 @@ let merge_conj fst snd =
   { fst with fresh; tbl }
 ;;
 
-let lookup ident map = IdentMap.find_opt ident map
-
 let get_value ctx exp =
   let open Typedtree in
   let open Ctx in
@@ -56,29 +53,17 @@ let get_value ctx exp =
   let rec loop exp =
     match exp.exp_desc with
     | Texp_construct (_, cons_desc, args) ->
-      let args = List.map loop args in
-      Constr (cons_desc, args)
-    | Texp_ident (Path.Pident ident, _, _) when is_var ident -> Var ident
+      args
+      |> List.map loop
+      |> Core.Option.all
+      |> Option.map (fun args -> Constr (cons_desc, args))
+    | Texp_ident (Path.Pident ident, _, _) when is_var ident -> Some (Var ident)
     | Texp_apply (hd, args) when Ocanren_patterns.is_inj hd ->
       let arg = Assert.un_arg args in
       loop arg
-    | _ -> failwith "Get_value. Not implemented"
+    | _ -> None (* TODO *)
   in
   loop exp
-;;
-
-let rec occurs ident value tlb =
-  let same = Ident.same ident in
-  match value with
-  | Var v ->
-    if same v
-    then true
-    else
-      IdentMap.find_opt v tlb
-      |> Option.map (fun value -> occurs ident value tlb)
-      |> Option.value ~default:false
-  | Constr (_, ls) ->
-    ls |> List.map (fun v -> occurs ident v tlb) |> List.fold_left ( || ) false
 ;;
 
 let add ident value ls =
@@ -100,7 +85,6 @@ let rec unify ctx fst_val snd_val =
   let open Ctx in
   let tbl = ctx.tbl in
   let back tbl = { ctx with tbl } in
-  let open Typedtree in
   match fst_val, snd_val with
   | Var fident, Var sident -> add fident snd_val tbl |> add sident fst_val |> back
   | (Constr _ as cons), Var ident | Var ident, (Constr _ as cons) ->
@@ -114,7 +98,6 @@ let rec unify ctx fst_val snd_val =
 ;;
 
 let get_var_info exp =
-  let open Ast_helper in
   let open Typedtree in
   let open Ctx in
   let get_params exp =
@@ -128,7 +111,7 @@ let get_var_info exp =
   in
   let rec loop (ctx : ctx) exp =
     match exp.exp_desc with
-    | Texp_function _ -> failwith "Assumed no functions." (* conde *)
+    | Texp_function _ -> failwith "Assumed no functions."
     | Texp_apply (hd_exp, args) when is_conde hd_exp ->
       let e = Assert.un_arg args in
       loop ctx e
@@ -137,25 +120,26 @@ let get_var_info exp =
       let fst, snd = Assert.bin args in
       let fst = loop ctx fst in
       let snd = loop ctx snd in
-      merge_disj fst snd
+      Core.Option.merge fst snd ~f:(fun fst snd -> merge_disj fst snd)
     (* (|||) disj *)
     | Texp_apply (hd_exp, args) when is_disj hd_exp ->
       let fexp, sexp = Assert.bin_args args in
       let fexp = loop ctx fexp in
       let sexp = loop ctx sexp in
-      merge_disj fexp sexp
+      Core.Option.merge fexp sexp ~f:(fun fexp sexp -> merge_disj fexp sexp)
       (* (&&&) conj *)
     | Texp_apply (hd_exp, args) when is_conj hd_exp ->
       let fexp, sexp = Assert.bin_args args in
       let fexp = loop ctx fexp in
       let sexp = loop ctx sexp in
-      merge_conj fexp sexp
+      Core.Option.merge fexp sexp ~f:(fun fexp sexp -> merge_conj fexp sexp)
     (* === *)
     | Texp_apply (hd_exp, args) when is_unify hd_exp ->
       let fexp, sexp = Assert.bin_args args in
       let fst_value = get_value ctx fexp in
       let snd_value = get_value ctx sexp in
-      unify ctx fst_value snd_value
+      Core.Option.both fst_value snd_value
+      |> Core.Option.map ~f:(fun (fst, snd) -> unify ctx fst snd)
     (* =/= *)
     (* TODO disunify *)
     (* | Texp_apply (hd_exp, args) when is_nunify hd_exp ->
@@ -170,14 +154,84 @@ let get_var_info exp =
       let ctx = { ctx with fresh = new_fresh @ ctx.fresh } in
       loop ctx exp
     (* paramter -> variant *)
-    | _ -> ctx
+    | _ -> None
   in
   let body, global = get_params exp in
   let ctx = { Ctx.empty with global } in
   loop ctx body
 ;;
 
-let process variants varp parp exp =
-  let var_info = get_var_info exp in
-  ()
+let get_cons ident (tbl : value list IdentMap.t) =
+  let rec app_to_var x =
+    IdentMap.find_opt x tbl
+    |> Option.to_list
+    |> List.concat
+    |> List.map loop
+    |> List.concat
+  and loop = function
+    | Constr (desc, _) -> [ desc ]
+    | Var v -> app_to_var v
+  in
+  app_to_var ident
+;;
+
+let reduce tbl =
+  let reduce = function
+    | [ x ] -> x
+    | _ -> failwith "Reduce.Not implemeted"
+  in
+  IdentMap.to_seq tbl
+  |> Seq.fold_left
+       (fun acc (ident, values) -> IdentMap.add ident (reduce values) acc)
+       IdentMap.empty
+;;
+
+let merge_tbl fst snd =
+  IdentMap.merge
+    (fun _ fst snd ->
+      match fst, snd with
+      | Some fst, Some _ -> Some fst (* TODO*)
+      | Some x, None | None, Some x -> Some x
+      | None, None -> None)
+    fst
+    snd
+;;
+
+type answer = Delete
+
+let process varp parp exp =
+  let open Ctx in
+  (* clean path where spec param unifyed with another constructor *)
+  get_var_info exp
+  |> (function
+       | Some x -> x
+       | None -> failwith "Unify faild")
+  |> fun x ->
+  x.tbl
+  |> List.filter_map (fun tbl ->
+    let cons = get_cons parp#ident tbl in
+    let has_another = List.exists varp#cd_another cons in
+    if has_another then None else Some tbl)
+  |> List.map reduce
+  |> function
+  | [] -> failwith "empty tbl"
+  | hd :: tl ->
+    List.fold_left merge_tbl hd tl
+    |> fun result ->
+    IdentMap.find_opt parp#ident result
+    |> (function
+    | Some x ->
+      (match x with
+       | Var _ -> assert false
+       | Constr (desc, values) ->
+         assert (Types.may_equal_constr desc varp#desc);
+         assert (List.length values = desc.cstr_arity);
+         List.fold_left
+           (fun acc value ->
+             match value with
+             | Var x -> IdentMap.add x Delete acc
+             | Constr _ -> acc)
+           IdentMap.empty
+           values)
+    | None -> failwith "NOne in prrocess")
 ;;

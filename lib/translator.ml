@@ -33,17 +33,22 @@ exception Not_implemeted of string
 let spec_str_item funp parp varp str_item =
   let open Ast_helper in
   let open Typedtree in
-  let var_variant f s = (parp#exp f && varp#this s) || (parp#exp s && varp#this f) in
+  let var_variant f s =
+    (parp#by_exp f && varp#this s) || (parp#by_exp s && varp#this f)
+  in
   let var_another_variant f s =
-    (parp#exp f && varp#another s) || (parp#exp s && varp#another f)
+    (parp#by_exp f && varp#another s) || (parp#by_exp s && varp#another f)
   in
   let new_name = funp#name ^ "_" ^ varp#name in
   let untyp_exp = Untypeast.untype_expression in
-  let spec_exp exp =
+  let open Semant in
+  let spec_exp info exp =
     let rec loop exp : Parsetree.expression sresult =
       match exp.exp_desc with
-      | Texp_function { param; cases = [ { c_rhs; _ } ]; _ } when parp#ident param ->
+      | Texp_function { param; cases = [ { c_rhs; _ } ]; _ } when parp#by_ident param ->
         loop c_rhs
+      | Texp_function { param; cases = [ { c_rhs; _ } ]; _ } when IdentMap.mem param info
+        -> loop c_rhs
       | Texp_function
           { arg_label; param = _; cases = [ { c_lhs; c_guard; c_rhs } ]; partial = _ } ->
         let open Untypeast in
@@ -136,7 +141,7 @@ let spec_str_item funp parp varp str_item =
              Exp.apply hd new_args
            in
            (match () with
-            | () when parp#exp arg || varp#this arg ->
+            | () when parp#by_exp arg || varp#this arg ->
               (* simply delete argument by number (is it correct???) *)
               Expr app_without_param
             | () when varp#another arg ->
@@ -165,7 +170,7 @@ let spec_str_item funp parp varp str_item =
         in
         Expr (Exp.apply hd args)
       (* paramter -> variant *)
-      | _ when parp#exp exp -> inj_instance varp
+      | _ when parp#by_exp exp -> inj_instance varp
       | _ -> Expr (untyp_exp exp)
     in
     loop exp
@@ -173,7 +178,8 @@ let spec_str_item funp parp varp str_item =
   match str_item.str_desc with
   | Tstr_value (recf, [ vb ]) ->
     let pat = Untypeast.untype_pattern vb.vb_pat |> var_with_name new_name in
-    spec_exp vb.vb_expr
+    let info = Semant.process varp parp vb.vb_expr in
+    spec_exp info vb.vb_expr
     |> Sresult.get_with_default exp_failwith
     |> fun x -> Str.value recf [ Vb.mk pat x ]
   | Tstr_value _ ->
@@ -221,6 +227,6 @@ module Frontend = struct
 end
 
 let translate funp parp (t : Typedtree.structure) =
-  let funp, parp, variants = Validate.function_check funp#ident parp#ident t in
+  let funp, parp, variants = Validate.function_check funp#ident parp#by_ident t in
   t.str_items |> List.map (Frontend.map_typed_item funp parp variants) |> List.concat
 ;;

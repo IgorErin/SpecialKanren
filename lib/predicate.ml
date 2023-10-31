@@ -11,7 +11,7 @@ end
 
 let par_of_string name =
   object
-    method ident x = String.equal name @@ Ident.name x
+    method by_ident x = String.equal name @@ Ident.name x
   end
 ;;
 
@@ -36,10 +36,13 @@ let var_of_constr_desc desc all =
     if in_all && not_spec then Some () else None
   in
   let ( >>= ) = Option.bind in
+  let ( >> ) f g x = f x |> g in
   object
     method this e = texp_apply e >>= get_cons >>= is_spec |> Option.is_some
     method another e = texp_apply e >>= get_cons >>= is_other |> Option.is_some
     method name = desc.cstr_name
+    method cd_another = is_other >> Option.is_some
+    method desc = desc
 
     method instance =
       let open Ast_helper in
@@ -66,9 +69,10 @@ let fun_of_string name =
 
 let par_of_ident id number =
   object
-    method ident x = Ident.same id x
-    method exp e = Helpers.exp_by_ident id e
+    method by_ident x = Ident.same id x
+    method by_exp e = Helpers.exp_by_ident id e
     method number = number
+    method ident = id
   end
 ;;
 
