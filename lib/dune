@@ -1,6 +1,8 @@
 (library
- (libraries base compiler-libs.common)
+ (libraries base compiler-libs.common OCanren)
  (modules
+  Assert
+  Semant
   Patterns
   Translator
   Ocanren_patterns

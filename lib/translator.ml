@@ -2,25 +2,6 @@ open Typedtree
 open Ocanren_patterns
 open Sresult
 
-module Assert = struct
-  let bin args =
-    match args with
-    | [ fst; snd ] -> fst, snd
-    | _ -> assert false
-  ;;
-
-  let bin_args args =
-    match args with
-    | [ (_, Some fexp); (_, Some sexp) ] -> fexp, sexp
-    | _ -> assert false
-  ;;
-
-  let lb_arg = function
-    | [ (lb, Some arg) ] -> lb, arg
-    | _ -> assert false
-  ;;
-end
-
 let ident_of_string name =
   let open Ast_helper in
   let lid = Longident.Lident name in
