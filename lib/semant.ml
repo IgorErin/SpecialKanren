@@ -176,7 +176,17 @@ module Canren = struct
     in
     let body, global = get_params exp in
     let ctx = { global; fresh = [] } in
-    loop ctx body
+    global, loop ctx body
+  ;;
+
+  let get_declared_fresh_vars e =
+    let rec loop acc = function
+      | Fresh (vars, next) -> loop (vars @ acc) next
+      | Call (_, _) -> acc
+      | Unify _ | Disunify _ -> acc
+      | Conj (left, right) | Disj (left, right) -> loop acc left @ loop acc right
+    in
+    loop [] e
   ;;
 
   let rec remove_cons_unify (c : (value, value) canren) : (Ident.t, value) canren =
@@ -249,11 +259,27 @@ module Canren = struct
   ;;
 end
 
+let mk_new_var_fun vars =
+  let count = ref 0 in
+  let rec result () =
+    let new_name = Printf.sprintf "new_var%d" @@ !count in
+    count := !count + 1;
+    let ident = Ident.create_local new_name in
+    if List.exists (Ident.same ident) vars then result () else ident
+  in
+  result
+;;
+
 let process par const exp =
-  let mk = Ident.create_local in
-  let vars = List.init const#arity (fun i -> mk @@ Printf.sprintf "new_var%d" i) in
+  (* TODO (fun to detect persistent domains of vars)
+     TODO (fun to propogate values)
+     TODO (fun to detect unused vars)*)
+  let global_vars, tree = Canren.to_dnf exp in
+  let fresh_vars = Canren.get_declared_fresh_vars @@ Option.get tree in
+  let get_new_var = mk_new_var_fun (global_vars @ fresh_vars) in
+  let vars = List.init const#arity (fun _ -> get_new_var ()) in
   let result =
-    Canren.to_dnf exp
+    tree
     |> Option.get
     |> Canren.remove_cons_unify
     |> Canren.reduce_by_const const vars par#by_ident
