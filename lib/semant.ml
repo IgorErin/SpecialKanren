@@ -200,6 +200,7 @@ module Canren = struct
 
   let reduce_by_const const vars (is_par : Ident.t -> bool) (c : (Ident.t, value) canren) =
     let map_unify left right =
+      (* par === Cons (var1, var2, ...) -> new_var1 === var1 &&& new_var2 === var2 &&& ...*)
       match left, right with
       | ident, Constr (desc, values) when is_par ident && const#by_desc desc ->
         (match values, vars with
@@ -211,10 +212,14 @@ module Canren = struct
          | _ -> assert false)
       | ident, Constr (desc, _) when is_par ident && (not @@ const#by_desc desc) ->
         Sresult.ReduceConj
-      | _, Constr (desc, values) ->
-        let value = Unify (left, Constr (desc, values)) in
-        Sresult.expr value
-      | ident, Var v -> Sresult.expr @@ Unify (ident, Var v)
+        (* some_var === par -> some_var === Cons (new_var0, new_var1, ..)*)
+      | ident, Var v when is_par ident && (not @@ is_par v) ->
+        let vars = List.map (fun v -> Var v) vars in
+        Sresult.expr @@ Unify (v, Constr (const#desc, vars))
+      | ident, Var v when is_par v && (not @@ is_par ident) ->
+        let vars = List.map (fun v -> Var v) vars in
+        Sresult.expr @@ Unify (ident, Constr (const#desc, vars))
+      | _ -> Sresult.expr @@ Unify (left, right)
     in
     let map_disunify left right =
       match left, right with
