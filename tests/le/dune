@@ -17,4 +17,4 @@
  (modules le le_run))
 
 (cram
- (deps ./le_run.exe))
+ (deps ./le_run.exe le.src.ml))

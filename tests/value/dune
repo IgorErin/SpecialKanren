@@ -17,4 +17,4 @@
  (modules value_run))
 
 (cram
- (deps ./value_run.exe))
+ (deps ./value_run.exe value_src.ml))

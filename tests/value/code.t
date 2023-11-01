@@ -1,22 +1,13 @@
-  $ cat > a.ml <<-EOF 
-  > open OCanren
-  > 
-  > let value opt default result = 
-  > conde [ 
-  >   (opt === !! None) &&& (result === default);
-  >   Fresh.one (fun x -> (opt === !! (Some x)&&& (result === x)) )
-  >  ]
-  > 
-  $ cat a.ml
+  $ cat value_src.ml
   open OCanren
   
-  let value opt default result = 
-  conde [ 
-    (opt === !! None) &&& (result === default);
-    Fresh.one (fun x -> (opt === !! (Some x)&&& (result === x)) )
-   ]
-  
-  $ SpecialKanren -ml -o a.out -par opt -fname value a.ml
+  let value opt default result =
+    conde
+      [ opt === !!None &&& (result === default)
+      ; Fresh.one (fun x -> opt === !!(Some x) &&& (result === x))
+      ]
+  ;;
+  $ SpecialKanren -ml -o a.out -par opt -fname value value_src.ml
   $ cat a.out  
   open OCanren
   let value opt default result = conde [(opt === (!! None)) &&& (result === default); Fresh.one (fun x -> (opt === (!! (Some x))) &&& (result === x))]
