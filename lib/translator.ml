@@ -41,14 +41,11 @@ let spec_str_item funp parp varp str_item =
   in
   let new_name = funp#name ^ "_" ^ varp#name in
   let untyp_exp = Untypeast.untype_expression in
-  let open Semant in
-  let spec_exp info exp =
+  let spec_exp exp =
     let rec loop exp : Parsetree.expression sresult =
       match exp.exp_desc with
       | Texp_function { param; cases = [ { c_rhs; _ } ]; _ } when parp#by_ident param ->
         loop c_rhs
-      | Texp_function { param; cases = [ { c_rhs; _ } ]; _ } when IdentMap.mem param info
-        -> loop c_rhs
       | Texp_function
           { arg_label; param = _; cases = [ { c_lhs; c_guard; c_rhs } ]; partial = _ } ->
         let open Untypeast in
@@ -178,8 +175,8 @@ let spec_str_item funp parp varp str_item =
   match str_item.str_desc with
   | Tstr_value (recf, [ vb ]) ->
     let pat = Untypeast.untype_pattern vb.vb_pat |> var_with_name new_name in
-    let info = Semant.process varp parp vb.vb_expr in
-    spec_exp info vb.vb_expr
+    let () = Semant.process parp varp vb.vb_expr in
+    spec_exp vb.vb_expr
     |> Sresult.get_with_default exp_failwith
     |> fun x -> Str.value recf [ Vb.mk pat x ]
   | Tstr_value _ ->

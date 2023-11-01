@@ -43,6 +43,8 @@ let var_of_constr_desc desc all =
     method name = desc.cstr_name
     method cd_another = is_other >> Option.is_some
     method desc = desc
+    method by_desc = Types.may_equal_constr desc
+    method arity = desc.cstr_arity
 
     method instance =
       let open Ast_helper in

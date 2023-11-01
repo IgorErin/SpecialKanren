@@ -19,3 +19,11 @@ let lb_arg = function
   | [ (lb, Some arg) ] -> lb, arg
   | _ -> assert false
 ;;
+
+let args ls =
+  let map = function
+    | _, Some arg -> arg
+    | _ -> assert false
+  in
+  List.map map ls
+;;
