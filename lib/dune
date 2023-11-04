@@ -9,7 +9,8 @@
   Sresult
   Predicate
   Typespat
-  Validate)
+  Validate
+  Canren)
  (name SpecialKanren)
  (preprocess
   (pps ppxlib.metaquot ppx_optcomp)))

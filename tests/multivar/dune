@@ -16,4 +16,5 @@
  (libraries GT OCanren)
  (modules src run))
 
-(cram)
+(cram
+ (deps src.ml))
