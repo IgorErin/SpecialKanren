@@ -9,11 +9,12 @@ type ('a, 'b) dnf =
   | DUnify of ('a * 'b)
   | DDisunify of ('a * 'b)
   | DCall of (Path.t * Value.value list)
+  | DFresh of Ident.t list 
+
 
 let of_canren canren =
   let wrap x = x |> Core.List.return |> Core.List.return in
   let rec loop = function
-    | Fresh (_, next) -> loop next
     | Conj (left, right) ->
       Core.List.cartesian_product (loop left) (loop right)
       |> List.map (fun (fst, snd) -> fst @ snd)
@@ -21,6 +22,9 @@ let of_canren canren =
     | Unify (left, right) -> DUnify (left, right) |> wrap
     | Disunify (left, right) -> DDisunify (left, right) |> wrap
     | Call (name, values) -> DCall (name, values) |> wrap
+    | Fresh (freshs, next) -> 
+      List.map (fun item -> [DFresh freshs] @ item ) @@ loop next
+    
   in
   loop canren
 ;;
@@ -44,7 +48,12 @@ let pp f pfst psnd =
         | DCall (ident, values) ->
           Format.fprintf f "%s (" @@ Path.name ident;
           List.iter (fun v -> Format.fprintf f "%s" @@ Value.to_string v) values;
-          Format.fprintf f ")")
+          Format.fprintf f ")"
+        | DFresh (freshs) -> 
+          Format.fprintf f "Fresh (";
+          List.iter (fun i -> Format.fprintf f "%s " @@ Ident.name i ) freshs; 
+          Format.fprintf f ")";)
+
       l)
 ;;
 
@@ -66,6 +75,7 @@ let reduce_const_const dnf =
     | DDisunify (Constr _, Constr _) | DUnify (Constr _, Constr _) ->
       failwith "Const const unif not implemented"
     | DCall (ident, values) -> DCall (ident, values)
+    | DFresh _ as f -> f
   in
   List.map reduce dnf
 ;;
@@ -104,10 +114,21 @@ let mk_new_var_fun vars =
   result
 ;;
 
+let is_name_used name conj = 
+  let same = Ident.same name in
+  let rec  in_val = function 
+     | Var v -> same v 
+      | Constr (_, values) -> 
+        List.fold_left (fun acc v -> acc || in_val v) false values
+        in
+  let in_dnf = function
+  | DUnify (ident, value) | DDisunify(ident, value) ->  same ident || in_val value 
+  | DCall (_, values) -> List.fold_left (fun acc v -> acc || in_val v) false values
+  | DFresh _ -> false
+      in 
+  List.fold_left (fun acc dnf-> acc || in_dnf dnf ) false conj 
+
 let process par const exp =
-  (* TODO (fun to detect persistent domains of vars)
-     TODO (fun to propogate values)
-     TODO (fun to detect unused vars)*)
   let global_vars, tree = Canren.of_tast exp in
   let fresh_vars = Canren.get_declared_fresh_vars @@ Option.get tree in
   let get_new_var = mk_new_var_fun (global_vars @ fresh_vars) in

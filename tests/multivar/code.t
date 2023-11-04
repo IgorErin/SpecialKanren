@@ -10,8 +10,8 @@
           &&& conde
                 [ Fresh.two (fun f s ->
                     opt === !!(Some f) &&& (bl === f) &&& (opt === !!(Some s)))
-                ;  Fresh.two (fun m s ->
-                      opt === !!(Some m) &&& (bl === m) &&& (opt === !!(Some s)))
+                ; Fresh.two (fun m s ->
+                    opt === !!(Some m) &&& (bl === m) &&& (opt === !!(Some s)))
                 ; bl === !!false &&& (opt === !!None)
                 ])
       ]
@@ -20,12 +20,12 @@
   
   
    new disj 
-   && x===None () && bl===false ()
+   && Fresh (x ) && x===None () && bl===false ()
   
    new disj 
-   && x===Some (new_var0) && new_var0===f && bl===f && new_var0===s
+   && Fresh (x ) && x===Some (new_var0) && Fresh (s f ) && new_var0===f && bl===f && new_var0===s
    new disj 
-   && x===Some (new_var0) && new_var0===m && bl===m && new_var0===s
+   && Fresh (x ) && x===Some (new_var0) && Fresh (s m ) && new_var0===m && bl===m && new_var0===s
   $ cat a.out  
   open OCanren
   open OCanren.Std
