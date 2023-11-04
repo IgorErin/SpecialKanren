@@ -9,8 +9,7 @@ type ('a, 'b) dnf =
   | DUnify of ('a * 'b)
   | DDisunify of ('a * 'b)
   | DCall of (Path.t * Value.value list)
-  | DFresh of Ident.t list 
-
+  | DFresh of Ident.t list
 
 let of_canren canren =
   let wrap x = x |> Core.List.return |> Core.List.return in
@@ -22,9 +21,7 @@ let of_canren canren =
     | Unify (left, right) -> DUnify (left, right) |> wrap
     | Disunify (left, right) -> DDisunify (left, right) |> wrap
     | Call (name, values) -> DCall (name, values) |> wrap
-    | Fresh (freshs, next) -> 
-      List.map (fun item -> [DFresh freshs] @ item ) @@ loop next
-    
+    | Fresh (freshs, next) -> List.map (fun item -> [ DFresh freshs ] @ item) @@ loop next
   in
   loop canren
 ;;
@@ -49,11 +46,10 @@ let pp f pfst psnd =
           Format.fprintf f "%s (" @@ Path.name ident;
           List.iter (fun v -> Format.fprintf f "%s" @@ Value.to_string v) values;
           Format.fprintf f ")"
-        | DFresh (freshs) -> 
+        | DFresh freshs ->
           Format.fprintf f "Fresh (";
-          List.iter (fun i -> Format.fprintf f "%s " @@ Ident.name i ) freshs; 
-          Format.fprintf f ")";)
-
+          List.iter (fun i -> Format.fprintf f "%s " @@ Ident.name i) freshs;
+          Format.fprintf f ")")
       l)
 ;;
 
@@ -114,19 +110,40 @@ let mk_new_var_fun vars =
   result
 ;;
 
-let is_name_used name conj = 
-  let same = Ident.same name in
-  let rec  in_val = function 
-     | Var v -> same v 
-      | Constr (_, values) -> 
-        List.fold_left (fun acc v -> acc || in_val v) false values
-        in
-  let in_dnf = function
-  | DUnify (ident, value) | DDisunify(ident, value) ->  same ident || in_val value 
-  | DCall (_, values) -> List.fold_left (fun acc v -> acc || in_val v) false values
-  | DFresh _ -> false
-      in 
-  List.fold_left (fun acc dnf-> acc || in_dnf dnf ) false conj 
+let reduce_vars global dnf =
+  let get_vars conj =
+    let rec in_val = function
+      | Var v -> Core.List.return v
+      | Constr (_, values) -> List.map in_val values |> List.concat
+    in
+    let in_dnf = function
+      | DUnify (ident, value) | DDisunify (ident, value) -> ident :: in_val value
+      | DCall (_, values) -> List.map in_val values |> List.concat
+      | DFresh _ -> []
+    in
+    List.fold_left (fun acc dnf -> in_dnf dnf @ acc) [] conj
+  in
+  List.map
+    (fun cnj ->
+      let vars = get_vars cnj in
+      let is_used name = List.exists (Ident.same name) vars in
+      let filter = List.filter is_used in
+      List.map
+        (function
+         | DFresh vars -> DFresh (filter vars)
+         | x -> x)
+        cnj
+      |> fun result -> result, vars)
+    dnf
+  |> fun all ->
+  let conjs, vars = Core.List.unzip all in
+  let globals =
+    let all_vars = List.concat vars in
+    let filter name = List.exists (Ident.same name) all_vars in
+    List.filter filter global
+  in
+  conjs, globals
+;;
 
 let process par const exp =
   let global_vars, tree = Canren.of_tast exp in
@@ -141,8 +158,9 @@ let process par const exp =
     |> filter_by_cons par#by_ident const
     |> List.map (unwrap_const par#by_ident const vars)
   in
+  let dnf, _ = reduce_vars global_vars result in
   let pfst f ident = Format.fprintf f "%s" @@ Ident.name ident in
   let psnd f value = Format.fprintf f "%s" @@ Value.to_string value in
   Format.fprintf Format.std_formatter "\n%!";
-  pp Format.std_formatter pfst psnd result
+  pp Format.std_formatter pfst psnd dnf
 ;;
