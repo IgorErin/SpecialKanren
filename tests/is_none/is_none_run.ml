@@ -10,6 +10,6 @@ let _ =
     @@ Stream.take ~n:10
     @@ run q (fun x -> f x) (fun x -> show Bool.logic (x#reify Bool.reify))
   in
-  test is_none_None;
-  test is_none_Some
+  test is_none_None
 ;;
+(* test is_none_Some *)

@@ -1,57 +1,5 @@
-module IdentMap = struct
-  include Map.Make (Ident)
-end
-
-open Canren
-open Canren.Value
-
-type ('a, 'b) dnf =
-  | DUnify of ('a * 'b)
-  | DDisunify of ('a * 'b)
-  | DCall of (Path.t * Value.value list)
-  | DFresh of Ident.t list
-
-let of_canren canren =
-  let wrap x = x |> Core.List.return |> Core.List.return in
-  let rec loop = function
-    | Conj (left, right) ->
-      Core.List.cartesian_product (loop left) (loop right)
-      |> List.map (fun (fst, snd) -> fst @ snd)
-    | Disj (left, right) -> loop left @ loop right
-    | Unify (left, right) -> DUnify (left, right) |> wrap
-    | Disunify (left, right) -> DDisunify (left, right) |> wrap
-    | Call (name, values) -> DCall (name, values) |> wrap
-    | Fresh (freshs, next) -> List.map (fun item -> [ DFresh freshs ] @ item) @@ loop next
-  in
-  loop canren
-;;
-
-let pp f pfst psnd =
-  List.iter (fun l ->
-    Format.printf "\n new disj \n";
-    List.iter
-      (fun x ->
-        Format.printf " && ";
-        match x with
-        | DUnify (fst, snd) ->
-          pfst f fst;
-          Format.fprintf f "===";
-          psnd f snd
-        | DDisunify (fst, snd) ->
-          Format.fprintf f "(";
-          pfst f fst;
-          Format.fprintf f "=/=";
-          psnd f snd
-        | DCall (ident, values) ->
-          Format.fprintf f "%s (" @@ Path.name ident;
-          List.iter (fun v -> Format.fprintf f "%s" @@ Value.to_string v) values;
-          Format.fprintf f ")"
-        | DFresh freshs ->
-          Format.fprintf f "Fresh (";
-          List.iter (fun i -> Format.fprintf f "%s " @@ Ident.name i) freshs;
-          Format.fprintf f ")")
-      l)
-;;
+open Value
+open Dnf
 
 let filter_by_cons (is_par : Ident.t -> bool) const (dnf : _ dnf list list) =
   dnf
@@ -77,6 +25,7 @@ let reduce_const_const dnf =
 ;;
 
 let unwrap_const (is_par : Ident.t -> bool) const vars dnf =
+  (* ad hoc substitution TODO () *)
   let map_unify left right : _ dnf list =
     (* par === Cons (var1, var2, ...) -> new_var1 === var1 &&& new_var2 === var2 &&& ...*)
     match left, right with
@@ -108,6 +57,73 @@ let mk_new_var_fun vars =
     if List.exists (Ident.same ident) vars then result () else ident
   in
   result
+;;
+
+type trares =
+  | Delete of Ident.t list
+  | Promote of Ident.t * const
+
+let travers_graph names cnj =
+  let info =
+    List.map
+      (function
+       | DUnify (ident, Var v) -> [ ident, Var v; v, Var ident ]
+       | DUnify (ident, (Constr _ as c)) -> [ ident, c ]
+       | _ -> [])
+      cnj
+    |> List.concat
+  in
+  let get_values name =
+    let isame = Ident.same in
+    let vsame = Value.same in
+    let all_values_by_ident soruce_name =
+      List.filter_map
+        (fun (name, value) -> if isame soruce_name name then Some value else None)
+        info
+    in
+    let all_valeus_by_value = function
+      | Var ident -> all_values_by_ident ident
+      | Constr _ as c -> Core.List.return c
+    in
+    let rec loop acc front =
+      let new_front = List.map all_valeus_by_value front |> List.concat in
+      let diff =
+        List.filter (fun name -> not @@ List.exists (vsame name) acc) new_front
+      in
+      match diff with
+      | [] -> acc
+      | _ :: _ -> loop (acc @ diff) new_front
+    in
+    loop [] [ Var name ]
+  in
+  let infer_value values =
+    let vars, constrs = values |> Core.List.partition_map ~f:Value.partition in
+    match vars, constrs with
+    | vars, [] -> Delete vars
+    | [ name ], [ const ] ->
+      let value = Constr const in
+      if Value.is_ground value then Promote (name, const) else failwith "Not implemented"
+    (* assume that items unique *)
+    | _, _ :: _ -> failwith "Mor than one constr. Not implemented"
+  in
+  List.map get_values names |> List.map infer_value
+;;
+
+let substitute info conj =
+  let delete_vars names =
+    let to_delete name = List.exists (Ident.same name) names in
+    (function
+     | DUnify (ident, Var v) as d ->
+       if to_delete ident || to_delete v then None else Some d
+     | x -> Some x)
+    |> List.filter_map
+  in
+  List.fold_left
+    (fun conj -> function
+      | Promote _ -> conj (*TODO*)
+      | Delete names -> delete_vars names conj)
+    conj
+    info
 ;;
 
 let reduce_vars global dnf =
@@ -145,160 +161,6 @@ let reduce_vars global dnf =
   conjs, globals
 ;;
 
-module Helpers = struct
-  open Parsetree
-  open Ast_helper
-
-  let loc = Location.none
-  let create_pat ident = Pat.var @@ Location.mknoloc @@ Ident.name ident
-
-  (* copy past from noCanren *)
-  let create_apply f = function
-    | [] -> f
-    | args ->
-      let args = List.map (fun a -> Asttypes.Nolabel, a) args in
-      (match f.pexp_desc with
-       | Pexp_apply (g, args') -> Exp.apply g (args' @ args)
-       | _ -> Exp.apply f args)
-  ;;
-
-  let create_apply_to_list f arg_list =
-    let loc = f.pexp_loc in
-    let new_arg =
-      List.fold_right (fun x acc -> [%expr [%e x] :: [%e acc]]) arg_list [%expr []]
-    in
-    create_apply f [ new_arg ]
-  ;;
-
-  let create_conj left right = [%expr [%e left] &&& [%e right]]
-
-  let create_disj = function
-    | [] -> failwith "Disjunction needs one or more arguments"
-    | [ x ] -> x
-    | [ x; y ] -> [%expr [%e x] ||| [%e y]]
-    | l -> create_apply_to_list [%expr conde] l
-  ;;
-
-  let create_fun var body = [%expr fun [%p create_pat var] -> [%e body]]
-
-  let create_fun_closer vars body =
-    List.fold_right (fun var acc -> create_fun var acc) vars body
-  ;;
-
-  let create_fresh var body = create_apply [%expr Fresh.one] [ create_fun var body ]
-  let create_inj expr = [%expr !![%e expr]]
-
-  (* end of copy past *)
-
-  let create_apply f e = [%expr [%e f] [%e e]]
-  let create_apply_closer f exps = List.fold_left create_apply f exps
-  let create_unify left right = [%expr [%e left] === [%e right]]
-  let create_disunify left right = [%expr [%e left] =/= [%e right]]
-
-  open Ast_helper
-
-  let lid_of_ident ident =
-    ident
-    |> Ident.name
-    |> fun x -> Longident.Lident x |> fun x -> Location.mkloc x Location.none
-  ;;
-
-  let lid_of_string str = Longident.Lident str |> fun x -> Location.mkloc x Location.none
-
-  let exp_of_value value =
-    let rec create_const desc values =
-      let exps = List.map inside_constr values in
-      (match exps with
-       | [] -> None
-       | _ :: _ -> Some (Exp.tuple exps))
-      |> fun arg ->
-      let lid = desc.Types.cstr_name |> lid_of_string in
-      Exp.construct lid arg
-    and inside_constr = function
-      | Var ident -> lid_of_ident ident |> Exp.ident
-      | Constr (desc, values) -> create_const desc values
-    and loop value =
-      match value with
-      | Var ident -> lid_of_ident ident |> Exp.ident
-      | Constr (desc, values) -> create_const desc values |> create_inj
-    in
-    loop value
-  ;;
-
-  let fresh_closer vars cont =
-    List.fold_right (fun var acc -> create_fresh var acc) vars cont
-  ;;
-
-  let exp_of_ident ident = lid_of_ident ident |> Exp.ident
-
-  let to_past_one = function
-    | DUnify (ident, value) ->
-      let left = exp_of_ident ident in
-      let right = exp_of_value value in
-      create_unify left right
-    | DDisunify (ident, value) ->
-      let left = exp_of_ident ident in
-      let right = exp_of_value value in
-      create_disunify left right
-    | DCall (ident, values) ->
-      let values = List.map exp_of_value values in
-      let lident =
-        Untypeast.lident_of_path ident |> fun x -> Location.mkloc x Location.none
-      in
-      let ident = Exp.ident lident in
-      create_apply_closer ident values
-    | DFresh _ -> failwith "DFresh unexpected for now (TODO)"
-  ;;
-
-  let past_of_conj conj =
-    let to_past_unify ident value =
-      let left = exp_of_ident ident in
-      let right = exp_of_value value in
-      create_unify left right
-    in
-    let to_past_disunify ident value =
-      let left = exp_of_ident ident in
-      let right = exp_of_value value in
-      create_disunify left right
-    in
-    let to_past_call ident values =
-      let values = List.map exp_of_value values in
-      let lident =
-        Untypeast.lident_of_path ident |> fun x -> Location.mkloc x Location.none
-      in
-      let ident = Exp.ident lident in
-      create_apply_closer ident values
-    in
-    let to_past_one = function
-      | DUnify (ident, value) -> to_past_unify ident value
-      | DDisunify (ident, value) -> to_past_disunify ident value
-      | DCall (ident, values) -> to_past_call ident values
-      | DFresh _ -> failwith "DFresh unexpected here (TODO)"
-    in
-    (* copy past but compiler aware *)
-    let to_past_regular current next =
-      match current with
-      | DUnify (ident, value) ->
-        let current = to_past_unify ident value in
-        create_conj current next
-      | DDisunify (ident, value) ->
-        let current = to_past_disunify ident value in
-        create_conj current next
-      | DCall (ident, values) ->
-        let current = to_past_call ident values in
-        create_conj current next
-      | DFresh vars -> fresh_closer vars next
-    in
-    match List.rev conj with
-    | [] -> failwith "Empty conj TODO()"
-    | hd :: tl ->
-      let hd = to_past_one hd in
-      List.fold_right to_past_regular (List.rev tl) hd
-  ;;
-
-  let past_of_dnf dnf = List.map past_of_conj dnf |> create_disj
-end
-
 let process par const exp =
   let globals, tree = Canren.of_tast exp in
   let fresh_vars = Canren.get_declared_fresh_vars @@ Option.get tree in
@@ -317,12 +179,16 @@ let process par const exp =
     |> List.map (unwrap_const par#by_ident const vars)
   in
   let dnf, globals = reduce_vars globals result in
-  let pfst f ident = Format.fprintf f "%s" @@ Ident.name ident in
-  let psnd f value = Format.fprintf f "%s" @@ Value.to_string value in
-  Format.fprintf Format.std_formatter "\n%!";
-  Format.printf "Global :";
-  List.iter (fun x -> Format.printf "%s " @@ Ident.name x) globals;
-  pp Format.std_formatter pfst psnd dnf;
-  let body = Helpers.past_of_dnf dnf in
-  Helpers.create_fun_closer globals body
+  let _ =
+    fun () ->
+    (* if verbose ... TODO() *)
+    let pfst f ident = Format.fprintf f "%s" @@ Ident.name ident in
+    let psnd f value = Format.fprintf f "%s" @@ Value.to_string value in
+    Format.fprintf Format.std_formatter "\n%!";
+    Format.printf "Global :";
+    List.iter (fun x -> Format.printf "%s " @@ Ident.name x) globals;
+    pp Format.std_formatter pfst psnd dnf
+  in
+  let body = Dnf_past.past_of_dnf dnf in
+  Dnf_past.create_fun_closer globals body
 ;;

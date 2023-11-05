@@ -1,20 +1,4 @@
 open Ocanren_patterns
-
-module Value = struct
-  type value =
-    | Var of Ident.t
-    | Constr of Types.constructor_description * value list
-
-  let rec to_string = function
-    | Var v -> Printf.sprintf "%s" @@ Ident.name v
-    | Constr (desc, values) ->
-      values
-      |> List.map to_string
-      |> String.concat " "
-      |> Printf.sprintf "%s (%s)" desc.cstr_name
-  ;;
-end
-
 open Value
 
 module Ctx = struct
@@ -40,7 +24,7 @@ let get_value vars exp =
   let rec loop exp =
     match exp.exp_desc with
     | Texp_construct (_, cons_desc, args) ->
-      args |> List.map loop |> fun args -> Constr (cons_desc, args)
+      args |> List.map loop |> fun args -> Value.Constr (cons_desc, args)
     | Texp_ident (Path.Pident ident, _, _) when is_var ident -> Var ident
     | Texp_apply (hd, args) when Ocanren_patterns.is_inj hd ->
       let arg = Assert.un_arg args in

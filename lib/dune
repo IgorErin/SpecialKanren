@@ -10,7 +10,10 @@
   Predicate
   Typespat
   Validate
-  Canren)
+  Canren
+  Dnf
+  Value
+  Dnf_past)
  (name SpecialKanren)
  (preprocess
   (pps ppxlib.metaquot ppx_optcomp)))
