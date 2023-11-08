@@ -170,22 +170,6 @@ let mk_new_var_fun vars =
   result
 ;;
 
-module Names = struct
-  type ndnf =
-    | NCall of unit ref * value list
-    | NFresh of Ident.t list
-    | NUnify of Ident.t * value
-    | NDisunifu of Ident.t * value
-
-  let get_names conj =
-    List.filter_map
-      (function
-       | DCall (name, values) -> Some (name, values)
-       | _ -> None)
-      conj
-  ;;
-end
-
 let reduce_vars global dnf =
   let get_vars conj =
     let rec in_val = function
@@ -249,6 +233,7 @@ let process par const exp =
     pipline par const new_const_vars globals fresh_vars @@ of_canren canren
   in
   let _ =
+    fun () ->
     (* if verbose ... TODO() *)
     let pfst f ident = Format.fprintf f "%s" @@ Ident.name ident in
     let psnd f value = Format.fprintf f "%s" @@ Value.to_string value in

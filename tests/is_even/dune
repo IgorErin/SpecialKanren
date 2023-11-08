@@ -4,17 +4,17 @@
    (:standard -rectypes -w -27-33-32-39))))
 
 (rule
- (targets le.ml)
+ (targets is_even.ml)
  (deps
   (:exec %{project_root}/bin/main.exe)
   (:input src.ml))
  (action
-  (run sh -c "%{exec} -ml -par opt -fname rel -o %{targets} %{input}")))
+  (run sh -c "%{exec} -ml -par res -fname is_even -o %{targets} %{input}")))
 
 (executable
  (name run)
  (libraries GT OCanren)
- (modules src run))
+ (modules src run is_even))
 
 (cram
- (deps src.ml))
+ (deps is_even.ml ./run.exe src.ml))
