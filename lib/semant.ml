@@ -205,6 +205,74 @@ let reduce_vars global dnf =
   conjs, globals
 ;;
 
+module Result = struct
+  type fun_info =
+    { ref : (Path.t * value list) option ref
+    ; name : Path.t
+    ; consts : (int * Types.constructor_description) list
+    }
+
+  type ('a, 'b) item =
+    | FUnify of 'a * 'b
+    | FDisunify of 'a * 'b
+    | FFresh of Ident.t list
+    | FCall of (Path.t * value list) option ref
+
+  type ('a, 'b) conj = ('a, 'b) item list
+  type ('a, 'b) dnf = ('a, 'b) conj list
+
+  type ('a, 'b) t =
+    { dnf : ('a, 'b) dnf
+    ; fun_infos : fun_info list
+    ; globals : Ident.t list
+    }
+
+  let fetch conj =
+    let get = function
+      | DCall (path, args) when List.exists Value.is_constr args ->
+        let ref = ref None in
+        FCall ref, Some (ref, path, args)
+      | DUnify (left, right) -> FUnify (left, right), None
+      | DDisunify (left, right) -> FDisunify (left, right), None
+      | DFresh vars -> FFresh vars, None
+      | DCall x -> FCall (ref @@ Some x), None
+    in
+    let fdnf, funs = List.map get conj |> Core.List.unzip in
+    let funs = List.filter_map (fun x -> x) funs in
+    fdnf, funs
+  ;;
+
+  let get_info l =
+    l
+    |> List.mapi (fun index value ->
+      match value with
+      | Constr (desc, _) -> Some (index, desc)
+      | _ -> None)
+    |> List.filter_map (fun x -> x)
+  ;;
+
+  let filter_funs funs =
+    funs
+    |> List.filter_map (fun (ref, name, values) ->
+      get_info values
+      |> function
+      | [] -> None
+      | consts -> Some { ref; name; consts })
+  ;;
+
+  let process_conj conj =
+    let conj, funs = fetch conj in
+    let funs = funs |> filter_funs in
+    conj, funs
+  ;;
+
+  let process dnf : _ dnf * fun_info list =
+    let dnf, funs = List.map process_conj dnf |> Core.List.unzip in
+    let funs = List.concat funs in
+    dnf, funs
+  ;;
+end
+
 let pipline par const new_const_vars global_vars _ dnf =
   (* idnet, Value dnf *)
   let dnf = List.map reduce_const_const dnf in
@@ -217,31 +285,33 @@ let pipline par const new_const_vars global_vars _ dnf =
   dnf, global_vars
 ;;
 
-let process par const exp =
-  let globals, tree = Canren.of_tast exp in
-  let canren = Option.get tree in
-  let fresh_vars = Canren.get_declared_fresh_vars @@ Option.get tree in
-  let get_new_var = mk_new_var_fun (globals @ fresh_vars) in
-  let new_const_vars = List.init const#arity (fun _ -> get_new_var ()) in
-  let globals =
-    List.map
-      (fun var -> if Ident.same var par#ident then new_const_vars else [ var ])
-      globals
-    |> List.concat
-  in
-  let dnf, globals =
-    pipline par const new_const_vars globals fresh_vars @@ of_canren canren
-  in
-  let _ =
-    fun () ->
-    (* if verbose ... TODO() *)
-    let pfst f ident = Format.fprintf f "%s" @@ Ident.name ident in
-    let psnd f value = Format.fprintf f "%s" @@ Value.to_string value in
-    Format.fprintf Format.std_formatter "\n%!";
-    Format.printf "Global :";
-    List.iter (fun x -> Format.printf "%s " @@ Ident.name x) globals;
-    pp Format.std_formatter pfst psnd dnf
-  in
-  let body = Dnf_past.past_of_dnf dnf in
-  Dnf_past.create_fun_closer globals body
+let run_per_const par const const_vars dnf =
+  (* reduce conjanctions by const*)
+  let dnf = filter_by_cons par#by_ident const dnf in
+  (* unwrap spec constructor *)
+  let dnf = List.map (unwrap_const par#by_ident const const_vars) dnf in
+  dnf
 ;;
+
+let run info globals canren =
+  let fresh_vars = Canren.get_declared_fresh_vars canren in
+  let new_var = mk_new_var_fun (globals @ fresh_vars) in
+  let info =
+    List.map
+      (fun (pat, const) ->
+        let const_vars = List.init const#arity (fun _ -> new_var ()) in
+        pat, const, const_vars)
+      info
+  in
+  let dnf = Dnf.of_canren canren in
+  let dnf = List.map reduce_const_const dnf in
+  let result =
+    List.fold_left
+      (fun acc (par, const, const_vars) -> run_per_const par const const_vars acc)
+      dnf
+      info
+  in
+  let dnf, fun_infos = result |> Result.process in
+  Result.{ dnf; fun_infos; globals }
+;;
+
