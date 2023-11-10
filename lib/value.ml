@@ -53,3 +53,8 @@ let partition : value -> (Ident.t, const) Core.Either.t =
   | Var v -> Either.First v
   | Constr (desc, values) -> Either.Second (desc, values)
 ;;
+
+let constr_get_opt = function
+  | Constr (desc, values) -> Some (desc, values)
+  | _ -> None
+;;

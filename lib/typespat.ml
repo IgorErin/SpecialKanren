@@ -34,11 +34,13 @@ let get_variants Types.{ type_kind; type_loc; _ } =
   | Type_open -> Location.raise_errorf ~loc:type_loc "Open type. Expected variant."
 ;;
 
-let get_cons type_exp env =
+let desc_of_exp env type_exp =
   let open Types in
-  skip_ilogic type_exp
+  type_exp
   |> path_of_constr
   |> look env
   |> get_variants
   |> List.map (fun { cd_id; _ } -> Env.find_ident_constructor cd_id env)
 ;;
+
+let get_cons type_exp env = skip_ilogic type_exp |> desc_of_exp env

@@ -80,7 +80,8 @@ let par_of_ident id number =
 
 let fun_of_ident id =
   object
-    method ident x = Ident.same id x
+    method by_ident x = Ident.same id x
+    method ident = id
     method exp e = Helpers.exp_by_ident id e
     method name = Ident.name id
   end

@@ -1,87 +1,128 @@
 open Typedtree
-open Sresult
 
-let ident_of_string name =
-  let open Ast_helper in
-  let lid = Longident.Lident name in
-  let loc = Location.mkloc lid Location.none in
-  Exp.ident loc
-;;
+type ('a, 'b) raw_fun =
+  { rname : Ident.t
+  ; rglobals : Ident.t list
+  ; rbody : ('a, 'b) Canren.canren
+  }
 
-let var_with_name new_name Parsetree.{ ppat_desc; _ } =
-  let open Ast_helper in
-  let open Parsetree in
-  match ppat_desc with
-  | Ppat_var ident -> Pat.var { ident with txt = new_name }
-  | _ -> failwith "Var expected"
-;;
-
-let exp_failwith =
-  let loc = Location.none in
-  [%expr failwith "Relation reduced"]
-;;
-
-let inj_instance p =
-  let loc = Location.none in
-  Expr [%expr !![%e p#instance]]
-;;
-
-exception Unexpected_structure
-exception Not_implemeted of string
-
-let spec_str_item funp parp varp str_item =
-  let open Ast_helper in
-  let open Typedtree in
-  let new_name = funp#name ^ "_" ^ varp#name in
-  match str_item.str_desc with
-  | Tstr_value (recf, [ vb ]) ->
-    let pat = Untypeast.untype_pattern vb.vb_pat |> var_with_name new_name in
-    Semant.process parp varp vb.vb_expr |> fun x -> Str.value recf [ Vb.mk pat x ]
-  | Tstr_value _ ->
-    (* should be checked at validating *)
-    assert false
-  | _ -> raise Unexpected_structure
-;;
-
-module Frontend = struct
-  let ident_of_vb_opt vb =
+let get_funs str =
+  str.str_items
+  |> List.filter_map (fun str ->
+    str.str_desc
+    |> function
+    | Tstr_value (_, vb) -> Some vb
+    | _ -> None)
+  |> List.concat
+  |> List.filter_map (fun vb ->
     match vb.vb_pat.pat_desc with
-    | Tpat_var (ident, _) -> Some ident
-    | _ -> None
-  ;;
+    | Tpat_var (ident, _) ->
+      let rglobals, canren = Canren.of_tast vb.vb_expr in
+      let canren = canren |> Option.get in
+      let rglobals = List.rev rglobals in
+      Some { rname = ident; rglobals; rbody = canren }
+    | _ -> None)
+;;
 
-  let struct_item_predicate funp str =
-    match str.str_desc with
-    | Tstr_value (_, [ vb ]) ->
-      ident_of_vb_opt vb
-      |> (function
-      | Some ident -> funp#ident ident
-      | None -> false)
-    | _ -> false
-  ;;
+let find funs path =
+  funs
+  |> List.find_opt (fun { rname; _ } -> Ident.same path rname)
+  |> Core.Option.value_or_thunk ~default:(fun () -> failwith "Not fun found in str")
+;;
 
-  let map_typed_item funp parp variants str_item =
-    let untyped_str_item =
-      let mapper = Untypeast.default_mapper in
-      mapper.structure_item mapper
+type ('a, 'b) spec_fun =
+  { source_info : Semant.Result.fun_info
+  ; result : ('a, 'b) Semant.Result.t
+  }
+
+let info_of_consts env globals consts =
+  consts
+  |> List.map (fun (number, (const_desc : Types.constructor_description)) ->
+    List.nth_opt globals number
+    |> Core.Option.value_or_thunk ~default:(fun () -> failwith "arg number out of range")
+    |> fun ident ->
+    let parp = Predicate.par_of_ident ident number in
+    let varp =
+      let type_constr = Typespat.desc_of_exp env const_desc.cstr_res in
+      Predicate.var_of_constr_desc const_desc type_constr
     in
-    let p = struct_item_predicate funp in
-    if p str_item
-    then (
-      let specs =
-        (* spec for each variant *)
-        variants
-        |> List.map (fun variant ->
-          let varp = Predicate.var_of_constr_desc variant variants in
-          spec_str_item funp parp varp str_item)
-      in
-      let source = untyped_str_item str_item in
-      source :: specs)
-    else untyped_str_item str_item |> fun x -> [ x ]
-  ;;
-end
+    parp, varp)
+;;
+
+let step funs env (Semant.Result.{ fname; consts; _ } as source_info) =
+  let { rglobals; rbody; _ } = find funs fname in
+  let info = info_of_consts env rglobals consts in
+  let result = Semant.run info rglobals rbody in
+  { source_info; result }
+;;
+
+let run deps env funs =
+  let create_name source_info =
+    let open Semant.Result in
+    let postfix =
+      source_info.consts
+      |> List.map (fun (num, (x : Types.constructor_description)) ->
+        Int.to_string num ^ x.cstr_name)
+      |> String.concat "_"
+    in
+    Ident.name source_info.fname ^ "_" ^ postfix
+  in
+  let set_call_self { source_info; _ } =
+    match source_info.ref with
+    | Some r ->
+      let name = create_name source_info in
+      let values = source_info.args in
+      r := Some (name, values)
+    | None -> ()
+  in
+  let set_external r { source_info; _ } =
+    let name = create_name source_info in
+    let values = source_info.args in
+    r := Some (name, values)
+  in
+  let rec loop acc deps =
+    (* let deps = set_already deps acc in *)
+    let front = List.map (step funs env) deps in
+    let new_front_deps =
+      front
+      |> List.concat_map (fun { result = { fun_infos; _ }; _ } -> fun_infos)
+      |> List.filter_map (fun info ->
+        let impl =
+          List.find_opt (fun item -> Semant.Result.equal info item.source_info) acc
+        in
+        match impl, info.ref with
+        | Some impl, Some r ->
+          set_external r impl;
+          None
+        | _ -> Some info)
+    in
+    match new_front_deps with
+    | [] -> front @ acc
+    | _ :: _ -> loop (acc @ front) new_front_deps
+  in
+  let result = loop [] deps in
+  result |> List.iter set_call_self;
+  result
+;;
+
+let run funp parp variants str =
+  let funs = get_funs str in
+  let deps =
+    variants
+    |> List.map (fun var ->
+      Semant.Result.
+        { ref = None; fname = funp#ident; consts = [ parp#number, var ]; args = [] })
+  in
+  let result = run deps str.str_final_env funs in
+  result
+  |> List.iter (fun { result; _ } ->
+    Semant.Result.pp Format.std_formatter result.dnf;
+    Format.printf "\n")
+;;
 
 let translate funp parp (t : Typedtree.structure) =
-  let funp, parp, variants = Validate.function_check funp#ident parp#by_ident t in
-  t.str_items |> List.map (Frontend.map_typed_item funp parp variants) |> List.concat
+  let _, funp, parp, variants = Validate.function_check funp#ident parp#by_ident t in
+  let _ = run funp parp variants t in
+  ()
 ;;
+(* t.str_items |> List.map (Frontend.map_typed_item funp parp variants) |> List.concat *)

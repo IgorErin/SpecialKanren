@@ -206,17 +206,33 @@ let reduce_vars global dnf =
 ;;
 
 module Result = struct
+  type fun_hole = (string * value list) option ref
+
   type fun_info =
-    { ref : (Path.t * value list) option ref
-    ; name : Path.t
+    { ref : fun_hole option
+    ; fname : Ident.t
     ; consts : (int * Types.constructor_description) list
+    ; args : value list
     }
+
+  let equal fst snd =
+    let consts_same =
+      List.length fst.consts = List.length snd.consts
+      && List.for_all2
+           (fun (fi, fc) (si, sc) ->
+             Int.equal fi si && Types.(equal_tag fc.cstr_tag sc.cstr_tag))
+           fst.consts
+           snd.consts
+    in
+    Ident.same fst.fname snd.fname && consts_same
+  ;;
 
   type ('a, 'b) item =
     | FUnify of 'a * 'b
     | FDisunify of 'a * 'b
     | FFresh of Ident.t list
-    | FCall of (Path.t * value list) option ref
+    | FCallHole of fun_hole
+    | FCall of (Path.t * value list)
 
   type ('a, 'b) conj = ('a, 'b) item list
   type ('a, 'b) dnf = ('a, 'b) conj list
@@ -229,47 +245,76 @@ module Result = struct
 
   let fetch conj =
     let get = function
-      | DCall (path, args) when List.exists Value.is_constr args ->
-        let ref = ref None in
-        FCall ref, Some (ref, path, args)
+      | DCall (f_path, args) ->
+        let consts =
+          args
+          |> List.mapi (fun index -> function
+            | Constr (desc, _) -> Some (index, desc)
+            | Var _ -> None)
+          |> List.filter_map (fun x -> x)
+        in
+        (match consts with
+         | [] -> FCall (f_path, args), None
+         | _ ->
+           let args =
+             List.concat_map
+               (function
+                | Constr (_, values) -> values
+                | x -> [ x ])
+               args
+           in
+           let ref = ref None in
+           let fname = Path.head f_path in
+           FCallHole ref, Some { ref = Some ref; fname; args; consts })
       | DUnify (left, right) -> FUnify (left, right), None
       | DDisunify (left, right) -> FDisunify (left, right), None
       | DFresh vars -> FFresh vars, None
-      | DCall x -> FCall (ref @@ Some x), None
     in
     let fdnf, funs = List.map get conj |> Core.List.unzip in
     let funs = List.filter_map (fun x -> x) funs in
     fdnf, funs
   ;;
 
-  let get_info l =
-    l
-    |> List.mapi (fun index value ->
-      match value with
-      | Constr (desc, _) -> Some (index, desc)
-      | _ -> None)
-    |> List.filter_map (fun x -> x)
-  ;;
-
-  let filter_funs funs =
-    funs
-    |> List.filter_map (fun (ref, name, values) ->
-      get_info values
-      |> function
-      | [] -> None
-      | consts -> Some { ref; name; consts })
-  ;;
-
-  let process_conj conj =
-    let conj, funs = fetch conj in
-    let funs = funs |> filter_funs in
-    conj, funs
-  ;;
-
   let process dnf : _ dnf * fun_info list =
-    let dnf, funs = List.map process_conj dnf |> Core.List.unzip in
+    let dnf, funs = List.map fetch dnf |> Core.List.unzip in
     let funs = List.concat funs in
     dnf, funs
+  ;;
+
+  let pp f =
+    let pfst f ident = Format.fprintf f "%s" @@ Ident.name ident in
+    let psnd f value = Format.fprintf f "%s" @@ Value.to_string value in
+    List.iter (fun l ->
+      Format.printf "\n new disj \n";
+      List.iter
+        (fun x ->
+          Format.printf " && ";
+          match x with
+          | FUnify (fst, snd) ->
+            pfst f fst;
+            Format.fprintf f "===";
+            psnd f snd
+          | FDisunify (fst, snd) ->
+            Format.fprintf f "(";
+            pfst f fst;
+            Format.fprintf f "=/=";
+            psnd f snd
+          | FCall (ident, values) ->
+            Format.fprintf f "%s (" @@ Path.name ident;
+            List.iter (fun v -> Format.fprintf f "%s" @@ Value.to_string v) values;
+            Format.fprintf f ")"
+          | FCallHole rf ->
+            (match !rf with
+             | Some (name, values) ->
+               Format.fprintf f "%s (" name;
+               List.iter (fun v -> Format.fprintf f "%s" @@ Value.to_string v) values;
+               Format.fprintf f ")"
+             | None -> failwith "Empty hole in")
+          | FFresh freshs ->
+            Format.fprintf f "Fresh (";
+            List.iter (fun i -> Format.fprintf f "%s " @@ Ident.name i) freshs;
+            Format.fprintf f ")")
+        l)
   ;;
 end
 
@@ -281,7 +326,7 @@ let pipline par const new_const_vars global_vars _ dnf =
   (* unwrap spec constructor *)
   let dnf = List.map (unwrap_const par#by_ident const new_const_vars) dnf in
   let dnf = List.map Propagate.try_propagate dnf in
-  let dnf, global_vars = reduce_vars global_vars dnf in
+  (* let dnf, global_vars = reduce_vars global_vars dnf in TODO *)
   dnf, global_vars
 ;;
 
@@ -290,6 +335,7 @@ let run_per_const par const const_vars dnf =
   let dnf = filter_by_cons par#by_ident const dnf in
   (* unwrap spec constructor *)
   let dnf = List.map (unwrap_const par#by_ident const const_vars) dnf in
+  let dnf = List.map Propagate.try_propagate dnf in
   dnf
 ;;
 
@@ -314,4 +360,3 @@ let run info globals canren =
   let dnf, fun_infos = result |> Result.process in
   Result.{ dnf; fun_infos; globals }
 ;;
-
