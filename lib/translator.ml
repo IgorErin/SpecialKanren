@@ -50,7 +50,7 @@ let step funs env Semant.Result.{ fname; consts } =
   Semant.run info fname rglobals rbody
 ;;
 
-let run soruce env funs =
+let resolve soruce env funs =
   let create_name source_info =
     let open Semant.Result in
     let postfix =
@@ -102,12 +102,13 @@ let run funp parp variants str =
     |> List.map (fun var ->
       Semant.Result.{ fname = funp#ident; consts = [ parp#number, var ] })
   in
-  run deps str.str_final_env funs
+  resolve deps str.str_final_env funs
 ;;
 
 let translate funp parp (t : Typedtree.structure) =
   let _, funp, parp, variants = Validate.function_check funp#ident parp#by_ident t in
-  let _ = run funp parp variants t in
-  ()
+  let result = run funp parp variants t in
+  let pstr = Untypeast.untype_structure t in
+  let str = Dnf_past.run result in
+  pstr @ [ str ]
 ;;
-(* t.str_items |> List.map (Frontend.map_typed_item funp parp variants) |> List.concat *)

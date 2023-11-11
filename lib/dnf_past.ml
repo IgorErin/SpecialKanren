@@ -130,3 +130,23 @@ let past_of_conj conj =
 ;;
 
 let past_of_dnf dnf = List.map past_of_conj dnf |> create_disj
+
+let create_var source_info =
+  let open Semant.Result in
+  let postfix =
+    source_info.consts
+    |> List.map (fun (num, (x : Types.constructor_description)) ->
+      Int.to_string num ^ x.cstr_name)
+    |> String.concat "_"
+  in
+  Ident.name source_info.fname ^ "_" ^ postfix |> Location.mknoloc |> Ast_helper.Pat.var
+;;
+
+let create_vb Semant.Result.{ res_info; res_globals; res_dnf; _ } =
+  let dnf = Semant.Result.to_dnf res_dnf in
+  let body = past_of_dnf dnf in
+  let f = create_fun_closer res_globals body in
+  Vb.mk (create_var res_info) f
+;;
+
+let run ls = List.map create_vb ls |> Ast_helper.Str.value Recursive

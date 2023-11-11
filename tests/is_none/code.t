@@ -11,5 +11,5 @@
   $ cat a.out  
   open OCanren
   let is_none x opt = conde [(x === (!! true)) &&& (opt === (!! None)); (x === (!! false)) &&& (Fresh.one (fun x' -> opt === (!! (Some x'))))]
-  let is_none_None x = x === (!! true)
-  let is_none_Some new_var0 x = (x === (!! false)) &&& (Fresh.one (fun x' -> new_var0 === x'))
+  let rec is_none_1None x = x === (!! true)
+  and is_none_1Some x new_var0 = (x === (!! false)) &&& (Fresh.one (fun x' -> new_var0 === x'))

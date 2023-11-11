@@ -20,6 +20,6 @@
       [(x === (!! O)) &&& (is === (!! true));
       ((x =/= (!! O)) &&& (y === (!! O))) &&& ((!! false) === is);
       Fresh.two (fun x' -> fun y' -> ((x === (!! (S x'))) &&& (y === (!! (S y')))) &&& (le x' y' is))]
-  let rec le_false y x =
-    ((x =/= (!! O)) &&& (y === (!! O))) ||| (Fresh.one (fun y' -> Fresh.one (fun x' -> (x === (!! (S (x')))) &&& ((y === (!! (S (y')))) &&& (le x' y' (!! false))))))
-  let rec le_true y x = (x === (!! O)) ||| (Fresh.one (fun y' -> Fresh.one (fun x' -> (x === (!! (S (x')))) &&& ((y === (!! (S (y')))) &&& (le x' y' (!! true))))))
+  let rec le_2false x y =
+    ((x =/= (!! O)) &&& (y === (!! O))) ||| (Fresh.one (fun y' -> Fresh.one (fun x' -> (x === (!! (S (x')))) &&& ((y === (!! (S (y')))) &&& (le_2false x' y')))))
+  and le_2true x y = (x === (!! O)) ||| (Fresh.one (fun y' -> Fresh.one (fun x' -> (x === (!! (S (x')))) &&& ((y === (!! (S (y')))) &&& (le_2true x' y')))))

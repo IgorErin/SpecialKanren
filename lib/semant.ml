@@ -323,6 +323,21 @@ module Result = struct
             Format.fprintf f ")")
         l)
   ;;
+
+  let to_dnf dnf =
+    let item = function
+      | FUnify (left, right) -> DUnify (left, right)
+      | FDisunify (left, right) -> DDisunify (left, right)
+      | FFresh fresh -> DFresh fresh
+      | FCallHole hole ->
+        (match !hole with
+         (* TODO *)
+         | Some (name, values) -> DCall (Path.Pident (Ident.create_local name), values)
+         | None -> failwith "")
+      | FCall (path, values) -> DCall (path, values)
+    in
+    List.map (fun cnj -> List.map item cnj) dnf
+  ;;
 end
 
 let pipline par const new_const_vars global_vars _ dnf =
@@ -351,18 +366,26 @@ let run info fname globals canren =
   let new_var = mk_new_var_fun (globals @ fresh_vars) in
   let dnf = Dnf.of_canren canren in
   let dnf = List.map reduce_const_const dnf in
+  let consts_info =
+    List.map
+      (fun (pat, const) ->
+        let const_vars = List.init const#arity (fun _ -> new_var ()) in
+        pat, const, const_vars)
+      info
+  in
   let result =
-    let info =
-      List.map
-        (fun (pat, const) ->
-          let const_vars = List.init const#arity (fun _ -> new_var ()) in
-          pat, const, const_vars)
-        info
-    in
     List.fold_left
       (fun acc (par, const, const_vars) -> run_per_const par const const_vars acc)
       dnf
-      info
+      consts_info
+  in
+  let globals =
+    globals
+    |> List.concat_map (fun glob ->
+      List.find_opt (fun (par, _, _) -> par#by_ident glob) consts_info
+      |> function
+      | Some (_, _, vars) -> vars
+      | None -> glob |> Core.List.return)
   in
   let res_dnf, res_deps = result |> Result.process in
   let consts = info |> List.map (fun (par, var) -> par#number, var#desc) in
