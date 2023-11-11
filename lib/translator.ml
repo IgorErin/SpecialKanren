@@ -30,11 +30,6 @@ let find funs path =
   |> Core.Option.value_or_thunk ~default:(fun () -> failwith "Not fun found in str")
 ;;
 
-type ('a, 'b) spec_fun =
-  { source_info : Semant.Result.fun_info
-  ; result : ('a, 'b) Semant.Result.t
-  }
-
 let info_of_consts env globals consts =
   consts
   |> List.map (fun (number, (const_desc : Types.constructor_description)) ->
@@ -49,14 +44,13 @@ let info_of_consts env globals consts =
     parp, varp)
 ;;
 
-let step funs env (Semant.Result.{ fname; consts; _ } as source_info) =
+let step funs env Semant.Result.{ fname; consts } =
   let { rglobals; rbody; _ } = find funs fname in
   let info = info_of_consts env rglobals consts in
-  let result = Semant.run info rglobals rbody in
-  { source_info; result }
+  Semant.run info fname rglobals rbody
 ;;
 
-let run deps env funs =
+let run soruce env funs =
   let create_name source_info =
     let open Semant.Result in
     let postfix =
@@ -67,42 +61,38 @@ let run deps env funs =
     in
     Ident.name source_info.fname ^ "_" ^ postfix
   in
-  let set_call_self { source_info; _ } =
-    match source_info.ref with
-    | Some r ->
-      let name = create_name source_info in
-      let values = source_info.args in
-      r := Some (name, values)
-    | None -> ()
+  let trans = step funs env in
+  let set_call_self Semant.Result.{ href; hfinfo; hargs; _ } =
+    href := Some (create_name hfinfo, hargs)
   in
-  let set_external r { source_info; _ } =
-    let name = create_name source_info in
-    let values = source_info.args in
-    r := Some (name, values)
+  let filter acc deps =
+    let open Semant.Result in
+    deps
+    |> List.filter_map (fun (hole : hole_info) ->
+      List.find_opt (fun item -> Semant.Result.equal hole.hfinfo item.res_info) acc
+      |> function
+      | Some _ ->
+        set_call_self hole;
+        None
+      | _ -> Some hole)
   in
   let rec loop acc deps =
-    (* let deps = set_already deps acc in *)
-    let front = List.map (step funs env) deps in
-    let new_front_deps =
-      front
-      |> List.concat_map (fun { result = { fun_infos; _ }; _ } -> fun_infos)
-      |> List.filter_map (fun info ->
-        let impl =
-          List.find_opt (fun item -> Semant.Result.equal info item.source_info) acc
-        in
-        match impl, info.ref with
-        | Some impl, Some r ->
-          set_external r impl;
-          None
-        | _ -> Some info)
+    let open Semant.Result in
+    let front = List.map (fun hole -> trans hole.hfinfo) deps in
+    let deps =
+      let deps = List.concat_map (fun res -> res.res_deps) front @ deps in
+      filter acc deps
     in
-    match new_front_deps with
-    | [] -> front @ acc
-    | _ :: _ -> loop (acc @ front) new_front_deps
+    let acc = front @ acc in
+    match deps with
+    | [] -> acc
+    | _ :: _ -> loop acc deps
   in
-  let result = loop [] deps in
-  result |> List.iter set_call_self;
-  result
+  let init = List.map trans soruce in
+  let deps =
+    init |> List.concat_map (fun Semant.Result.{ res_deps; _ } -> res_deps) |> filter init
+  in
+  loop init deps
 ;;
 
 let run funp parp variants str =
@@ -110,14 +100,9 @@ let run funp parp variants str =
   let deps =
     variants
     |> List.map (fun var ->
-      Semant.Result.
-        { ref = None; fname = funp#ident; consts = [ parp#number, var ]; args = [] })
+      Semant.Result.{ fname = funp#ident; consts = [ parp#number, var ] })
   in
-  let result = run deps str.str_final_env funs in
-  result
-  |> List.iter (fun { result; _ } ->
-    Semant.Result.pp Format.std_formatter result.dnf;
-    Format.printf "\n")
+  run deps str.str_final_env funs
 ;;
 
 let translate funp parp (t : Typedtree.structure) =

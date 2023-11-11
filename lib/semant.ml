@@ -207,12 +207,34 @@ let reduce_vars global dnf =
 
 module Result = struct
   type fun_hole = (string * value list) option ref
+  type spec_info = (int * Types.constructor_description) list
 
   type fun_info =
-    { ref : fun_hole option
-    ; fname : Ident.t
-    ; consts : (int * Types.constructor_description) list
-    ; args : value list
+    { fname : Ident.t
+    ; consts : spec_info
+    }
+
+  type hole_info =
+    { hfinfo : fun_info
+    ; href : fun_hole
+    ; hargs : value list
+    }
+
+  type ('a, 'b) item =
+    | FUnify of 'a * 'b
+    | FDisunify of 'a * 'b
+    | FFresh of Ident.t list
+    | FCallHole of fun_hole
+    | FCall of (Path.t * value list)
+
+  type ('a, 'b) conj = ('a, 'b) item list
+  type ('a, 'b) dnf = ('a, 'b) conj list
+
+  type ('a, 'b) t =
+    { res_info : fun_info
+    ; res_dnf : ('a, 'b) dnf
+    ; res_deps : hole_info list
+    ; res_globals : Ident.t list
     }
 
   let equal fst snd =
@@ -227,22 +249,6 @@ module Result = struct
     Ident.same fst.fname snd.fname && consts_same
   ;;
 
-  type ('a, 'b) item =
-    | FUnify of 'a * 'b
-    | FDisunify of 'a * 'b
-    | FFresh of Ident.t list
-    | FCallHole of fun_hole
-    | FCall of (Path.t * value list)
-
-  type ('a, 'b) conj = ('a, 'b) item list
-  type ('a, 'b) dnf = ('a, 'b) conj list
-
-  type ('a, 'b) t =
-    { dnf : ('a, 'b) dnf
-    ; fun_infos : fun_info list
-    ; globals : Ident.t list
-    }
-
   let fetch conj =
     let get = function
       | DCall (f_path, args) ->
@@ -253,19 +259,20 @@ module Result = struct
             | Var _ -> None)
           |> List.filter_map (fun x -> x)
         in
-        (match consts with
-         | [] -> FCall (f_path, args), None
-         | _ ->
-           let args =
-             List.concat_map
-               (function
-                | Constr (_, values) -> values
-                | x -> [ x ])
-               args
-           in
-           let ref = ref None in
-           let fname = Path.head f_path in
-           FCallHole ref, Some { ref = Some ref; fname; args; consts })
+        if Core.List.is_empty consts
+        then FCall (f_path, args), None
+        else (
+          let hargs =
+            List.concat_map
+              (function
+               | Constr (_, values) -> values
+               | x -> [ x ])
+              args
+          in
+          let href = ref None in
+          let fname = Path.head f_path in
+          let hfinfo = { fname; consts } in
+          FCallHole href, Some { href; hfinfo; hargs })
       | DUnify (left, right) -> FUnify (left, right), None
       | DDisunify (left, right) -> FDisunify (left, right), None
       | DFresh vars -> FFresh vars, None
@@ -275,7 +282,7 @@ module Result = struct
     fdnf, funs
   ;;
 
-  let process dnf : _ dnf * fun_info list =
+  let process dnf : _ dnf * hole_info list =
     let dnf, funs = List.map fetch dnf |> Core.List.unzip in
     let funs = List.concat funs in
     dnf, funs
@@ -309,7 +316,7 @@ module Result = struct
                Format.fprintf f "%s (" name;
                List.iter (fun v -> Format.fprintf f "%s" @@ Value.to_string v) values;
                Format.fprintf f ")"
-             | None -> failwith "Empty hole in")
+             | None -> Format.printf "HOLE")
           | FFresh freshs ->
             Format.fprintf f "Fresh (";
             List.iter (fun i -> Format.fprintf f "%s " @@ Ident.name i) freshs;
@@ -339,24 +346,25 @@ let run_per_const par const const_vars dnf =
   dnf
 ;;
 
-let run info globals canren =
+let run info fname globals canren =
   let fresh_vars = Canren.get_declared_fresh_vars canren in
   let new_var = mk_new_var_fun (globals @ fresh_vars) in
-  let info =
-    List.map
-      (fun (pat, const) ->
-        let const_vars = List.init const#arity (fun _ -> new_var ()) in
-        pat, const, const_vars)
-      info
-  in
   let dnf = Dnf.of_canren canren in
   let dnf = List.map reduce_const_const dnf in
   let result =
+    let info =
+      List.map
+        (fun (pat, const) ->
+          let const_vars = List.init const#arity (fun _ -> new_var ()) in
+          pat, const, const_vars)
+        info
+    in
     List.fold_left
       (fun acc (par, const, const_vars) -> run_per_const par const const_vars acc)
       dnf
       info
   in
-  let dnf, fun_infos = result |> Result.process in
-  Result.{ dnf; fun_infos; globals }
+  let res_dnf, res_deps = result |> Result.process in
+  let consts = info |> List.map (fun (par, var) -> par#number, var#desc) in
+  Result.{ res_dnf; res_deps; res_info = { fname; consts }; res_globals = globals }
 ;;
