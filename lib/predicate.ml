@@ -18,7 +18,7 @@ let par_of_string name =
 let var_of_constr_desc desc all =
   let open Typedtree in
   let open Types in
-  let eq fst snd = Types.may_equal_constr fst snd in
+  let eq fst snd = Types.equal_tag fst.cstr_tag snd.cstr_tag in
   let get_cons e =
     match e.exp_desc with
     | Texp_construct (_, cd, _) -> Some cd
@@ -35,15 +35,15 @@ let var_of_constr_desc desc all =
     let in_all = List.exists (fun x -> eq d x) all in
     if in_all && not_spec then Some () else None
   in
-  let ( >>= ) = Option.bind in
   let ( >> ) f g x = f x |> g in
+  let open Core.Option.Monad_infix in
   object
     method this e = texp_apply e >>= get_cons >>= is_spec |> Option.is_some
     method another e = texp_apply e >>= get_cons >>= is_other |> Option.is_some
     method name = desc.cstr_name
     method cd_another = is_other >> Option.is_some
     method desc = desc
-    method by_desc = Types.may_equal_constr desc
+    method by_desc = eq desc
     method arity = desc.cstr_arity
 
     method instance =
