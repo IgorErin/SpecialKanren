@@ -18,6 +18,7 @@
  (synopsis "Relational program specializer")
  (depends 
    dune
+  core
   (ocaml (>= "4.14"))
   ocamlfind
   GT
