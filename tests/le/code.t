@@ -1,4 +1,4 @@
-  $ cat ./le.src.ml
+  $ cat ./src.ml
   open OCanren
   open OCanren.Std
   open Nat
@@ -10,7 +10,7 @@
       ; Fresh.two (fun x' y' -> x === !!(S x') &&& (y === !!(S y')) &&& le x' y' is)
       ]
   ;;
-  $ SpecialKanren -ml -o a.out -par is -fname le le.src.ml
+  $ SpecialKanren -ml -o a.out -par is -fname le src.ml
   $ cat a.out  
   open OCanren
   open OCanren.Std

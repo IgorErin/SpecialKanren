@@ -7,14 +7,14 @@
  (targets le.ml)
  (deps
   (:exec %{project_root}/bin/main.exe)
-  (:input le.src.ml))
+  (:input src.ml))
  (action
   (run sh -c "%{exec} -ml -par is -fname le -o %{targets} %{input}")))
 
 (executable
- (name le_run)
+ (name run)
  (libraries GT OCanren)
- (modules le le_run))
+ (modules le run))
 
 (cram
- (deps ./le_run.exe le.src.ml))
+ (deps ./run.exe src.ml))

@@ -1,4 +1,4 @@
-(* module L = List
+module L = List
 open Le
 open GT
 open OCanren
@@ -15,6 +15,6 @@ let _ =
          (fun x y ->
            show Nat.logic (x#reify Nat.reify), show Nat.logic (y#reify Nat.reify))
   in
-  test "first test" le_false;
-  test "second test" le_true
-;; *)
+  test "first test" le_2false;
+  test "second test" le_2true
+;;

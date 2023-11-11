@@ -50,7 +50,7 @@ let step funs env Semant.Result.{ fname; consts } =
   Semant.run info fname rglobals rbody
 ;;
 
-let resolve soruce env funs =
+let resolve source env funs =
   let create_name source_info =
     let open Semant.Result in
     let postfix =
@@ -78,17 +78,13 @@ let resolve soruce env funs =
   in
   let rec loop acc deps =
     let open Semant.Result in
+    let deps = filter acc deps in
     let front = List.map (fun hole -> trans hole.hfinfo) deps in
-    let deps =
-      let deps = List.concat_map (fun res -> res.res_deps) front @ deps in
-      filter acc deps
-    in
+    let deps = List.concat_map (fun res -> res.res_deps) front @ deps |> filter acc in
     let acc = front @ acc in
-    match deps with
-    | [] -> acc
-    | _ :: _ -> loop acc deps
+    if Core.List.is_empty deps then acc else loop acc deps
   in
-  let init = List.map trans soruce in
+  let init = List.map trans source in
   let deps =
     init |> List.concat_map (fun Semant.Result.{ res_deps; _ } -> res_deps) |> filter init
   in
