@@ -11,6 +11,7 @@
   Validate
   Canren
   Dnf
+  Names_resolve
   Value
   Dnf_past)
  (name SpecialKanren)

@@ -44,15 +44,18 @@ let info_of_consts env globals consts =
     parp, varp)
 ;;
 
-let step funs env Semant.Result.{ fname; consts } =
+let step funs env Names_resolve.{ fname; consts } =
   let { rglobals; rbody; _ } = find funs fname in
   let info = info_of_consts env rglobals consts in
-  Semant.run info fname rglobals rbody
+  let Semant.{ dnf; globals } = Semant.run info rglobals rbody in
+  let res_dnf, res_deps = dnf |> Names_resolve.process in
+  let consts = info |> List.map (fun (par, var) -> par#number, var#desc) in
+  Names_resolve.{ res_dnf; res_deps; res_info = { fname; consts }; res_globals = globals }
 ;;
 
 let resolve source env funs =
   let create_name source_info =
-    let open Semant.Result in
+    let open Names_resolve in
     let postfix =
       source_info.consts
       |> List.map (fun (_, (x : Types.constructor_description)) -> x.cstr_name)
@@ -61,14 +64,14 @@ let resolve source env funs =
     Ident.name source_info.fname ^ "_" ^ postfix
   in
   let trans = step funs env in
-  let set_call_self Semant.Result.{ href; hfinfo; hargs; _ } =
+  let set_call_self Names_resolve.{ href; hfinfo; hargs; _ } =
     href := Some (create_name hfinfo, hargs)
   in
   let filter acc deps =
-    let open Semant.Result in
+    let open Names_resolve in
     deps
     |> List.filter_map (fun (hole : hole_info) ->
-      List.find_opt (fun item -> Semant.Result.equal hole.hfinfo item.res_info) acc
+      List.find_opt (fun item -> Names_resolve.equal hole.hfinfo item.res_info) acc
       |> function
       | Some _ ->
         set_call_self hole;
@@ -76,7 +79,7 @@ let resolve source env funs =
       | _ -> Some hole)
   in
   let rec loop acc deps =
-    let open Semant.Result in
+    let open Names_resolve in
     let deps = filter acc deps in
     let front = List.map (fun hole -> trans hole.hfinfo) deps in
     let deps = List.concat_map (fun res -> res.res_deps) front @ deps |> filter acc in
@@ -85,7 +88,7 @@ let resolve source env funs =
   in
   let init = List.map trans source in
   let deps =
-    init |> List.concat_map (fun Semant.Result.{ res_deps; _ } -> res_deps) |> filter init
+    init |> List.concat_map (fun Names_resolve.{ res_deps; _ } -> res_deps) |> filter init
   in
   loop init deps
 ;;
@@ -95,7 +98,7 @@ let run funp parp variants str =
   let deps =
     variants
     |> List.map (fun var ->
-      Semant.Result.{ fname = funp#ident; consts = [ parp#number, var ] })
+      Names_resolve.{ fname = funp#ident; consts = [ parp#number, var ] })
   in
   resolve deps str.str_final_env funs
 ;;

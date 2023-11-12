@@ -135,7 +135,7 @@ let past_of_dnf dnf =
 ;;
 
 let create_var source_info =
-  let open Semant.Result in
+  let open Names_resolve in
   let postfix =
     source_info.consts
     |> List.map (fun (_, (x : Types.constructor_description)) -> x.cstr_name)
@@ -144,8 +144,8 @@ let create_var source_info =
   Ident.name source_info.fname ^ "_" ^ postfix |> Location.mknoloc |> Ast_helper.Pat.var
 ;;
 
-let create_vb Semant.Result.{ res_info; res_globals; res_dnf; _ } =
-  let dnf = Semant.Result.to_dnf res_dnf in
+let create_vb Names_resolve.{ res_info; res_globals; res_dnf; _ } =
+  let dnf = Names_resolve.to_dnf res_dnf in
   let body = past_of_dnf dnf in
   let f = create_fun_closer res_globals body in
   Vb.mk (create_var res_info) f
