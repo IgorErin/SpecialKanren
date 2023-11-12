@@ -8,7 +8,7 @@ let show_nat x = show Nat.logic (x#reify Nat.reify)
 
 let _ =
   let test f =
-    L.iter (fun (x, y) -> Printf.printf "x = %s, y = %s\n%!" x y)
+    L.iter (fun (x, y) -> Printf.printf "%s - %s < 0\n%!" x y)
     @@ Stream.take ~n:10
     @@ run
          qr
