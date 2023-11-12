@@ -84,7 +84,7 @@ module Propagate = struct
   ;;
 end
 
-let filter_by_cons (is_par : Ident.t -> bool) const (dnf : _ dnf list list) =
+let filter_by_cons (is_par : Ident.t -> bool) const (dnf : _ dnf) =
   dnf
   |> List.filter (fun conj ->
     conj
@@ -114,33 +114,24 @@ let reduce_const_const dnf =
   List.map loop dnf |> List.concat
 ;;
 
-let unwrap_const (is_par : Ident.t -> bool) const vars dnf =
+let subst_const (is_par : Ident.t -> bool) const vars dnf =
+  let new_const = Constr (const#desc, List.map (fun v -> Var v) vars) in
   (* ad hoc substitution TODO () *)
-  let map_unify left right : _ dnf list =
-    (* par === Cons (var1, var2, ...) -> new_var1 === var1 &&& new_var2 === var2 &&& ...*)
-    match left, right with
-    | ident, Constr (desc, values) when is_par ident && const#by_desc desc ->
-      assert (List.length values = List.length vars);
-      List.map2 (fun value var -> DUnify (var, value)) values vars
-      (* some_var === par -> some_var === Cons (new_var0, new_var1, ..)*)
-    | ident, Var v when is_par ident && (not @@ is_par v) ->
-      let vars = List.map (fun v -> Var v) vars in
-      DUnify (v, Constr (const#desc, vars)) |> Core.List.return
-    | ident, Var v when is_par v && (not @@ is_par ident) ->
-      let vars = List.map (fun v -> Var v) vars in
-      DUnify (ident, Constr (const#desc, vars)) |> Core.List.return
-    | _ -> DUnify (left, right) |> Core.List.return
+  let map_unify left right : _ cnj =
+    (match left, right with
+     | ident, right when is_par ident -> DUnify (new_const, right)
+     | ident, Var v when is_par ident -> DUnify (Var v, new_const)
+     | ident, Var v when is_par v -> DUnify (Var ident, new_const)
+     | _ -> DUnify (Var left, right))
+    |> Core.List.return
   in
   let map_disunify left right =
     (* some_var =/= par -> some_var =/= Cons (new_var0, new_var1, ..)*)
-    match left, right with
-    | ident, Var v when is_par ident && (not @@ is_par v) ->
-      let vars = List.map (fun v -> Var v) vars in
-      DDisunify (v, Constr (const#desc, vars)) |> Core.List.return
-    | ident, Var v when is_par v && (not @@ is_par ident) ->
-      let vars = List.map (fun v -> Var v) vars in
-      DDisunify (ident, Constr (const#desc, vars)) |> Core.List.return
-    | _ -> DDisunify (left, right) |> Core.List.return
+    (match left, right with
+     | ident, right when is_par ident -> DDisunify (new_const, right)
+     | ident, Var v when is_par v -> DDisunify (Var ident, new_const)
+     | _ -> DDisunify (Var left, right))
+    |> Core.List.return
   in
   let map_var = function
     | Var v when is_par v ->
@@ -155,7 +146,7 @@ let unwrap_const (is_par : Ident.t -> bool) const vars dnf =
     | DCall (name, values) ->
       let values = List.map map_var values in
       DCall (name, values) |> Core.List.return
-    | x -> Core.List.return x)
+    | DFresh f -> Core.List.return @@ DFresh f)
   |> List.concat
 ;;
 
@@ -340,23 +331,12 @@ module Result = struct
   ;;
 end
 
-let pipline par const new_const_vars global_vars _ dnf =
-  (* idnet, Value dnf *)
-  let dnf = List.map reduce_const_const dnf in
-  (* reduce conjanctions by const*)
-  let dnf = filter_by_cons par#by_ident const dnf in
-  (* unwrap spec constructor *)
-  let dnf = List.map (unwrap_const par#by_ident const new_const_vars) dnf in
-  let dnf = List.map Propagate.try_propagate dnf in
-  (* let dnf, global_vars = reduce_vars global_vars dnf in TODO *)
-  dnf, global_vars
-;;
-
 let run_per_const par const const_vars dnf =
   (* reduce conjanctions by const*)
   let dnf = filter_by_cons par#by_ident const dnf in
   (* unwrap spec constructor *)
-  let dnf = List.map (unwrap_const par#by_ident const const_vars) dnf in
+  let dnf = List.map (subst_const par#by_ident const const_vars) dnf in
+  let dnf = List.map reduce_const_const dnf in
   let dnf = List.map Propagate.try_propagate dnf in
   dnf
 ;;

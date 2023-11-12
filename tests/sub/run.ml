@@ -16,7 +16,7 @@ let _ =
          (fun x y ->
            show Nat.logic (x#reify Nat.reify), show Nat.logic (y#reify Nat.reify))
   in
-  test sub_2None
+  test sub_None
 ;;
 
 let _ =
@@ -31,5 +31,5 @@ let _ =
            , show Nat.logic (y#reify Nat.reify)
            , show Nat.logic (z#reify Nat.reify) ))
   in
-  test sub_2Some
+  test sub_Some
 ;;

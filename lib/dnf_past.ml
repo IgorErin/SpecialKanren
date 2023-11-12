@@ -27,10 +27,10 @@ let create_apply_to_list f arg_list =
 let create_conj left right = [%expr [%e left] &&& [%e right]]
 
 let create_disj = function
-  | [] -> failwith "Disjunction needs one or more arguments"
-  | [ x ] -> x
-  | [ x; y ] -> [%expr [%e x] ||| [%e y]]
-  | l -> create_apply_to_list [%expr conde] l
+  | [] -> None
+  | [ x ] -> Some x
+  | [ x; y ] -> Some [%expr [%e x] ||| [%e y]]
+  | l -> Some (create_apply_to_list [%expr conde] l)
 ;;
 
 let create_fun var body = [%expr fun [%p create_pat var] -> [%e body]]
@@ -82,6 +82,7 @@ let fresh_closer vars cont =
 ;;
 
 let exp_of_ident ident = lid_of_ident ident |> Exp.ident
+let reduced = [%expr failwith "Reduced"]
 
 let past_of_conj conj =
   let to_past_unify ident value =
@@ -123,20 +124,21 @@ let past_of_conj conj =
     | DFresh vars -> fresh_closer vars next
   in
   match List.rev conj with
-  | [] -> failwith "Empty conj TODO()"
+  | [] -> reduced
   | hd :: tl ->
     let hd = to_past_one hd in
     List.fold_right to_past_regular (List.rev tl) hd
 ;;
 
-let past_of_dnf dnf = List.map past_of_conj dnf |> create_disj
+let past_of_dnf dnf =
+  List.map past_of_conj dnf |> create_disj |> Core.Option.value ~default:reduced
+;;
 
 let create_var source_info =
   let open Semant.Result in
   let postfix =
     source_info.consts
-    |> List.map (fun (num, (x : Types.constructor_description)) ->
-      Int.to_string num ^ x.cstr_name)
+    |> List.map (fun (_, (x : Types.constructor_description)) -> x.cstr_name)
     |> String.concat "_"
   in
   Ident.name source_info.fname ^ "_" ^ postfix |> Location.mknoloc |> Ast_helper.Pat.var

@@ -15,7 +15,7 @@ let _ =
          (fun x y ->
            show Nat.logic (x#reify Nat.reify), show Nat.logic (y#reify Nat.reify))
   in
-  test "second test" value_0None;
+  test "second test" value_None;
   let test name f =
     Printf.printf "%s \n" name;
     L.iter (fun (x, y, z) -> Printf.printf "opt = %s default = %s result = %s\n" x y z)
@@ -28,5 +28,5 @@ let _ =
            , show Nat.logic (y#reify Nat.reify)
            , show Nat.logic (z#reify Nat.reify) ))
   in
-  test "first test" value_0Some
+  test "first test" value_Some
 ;;

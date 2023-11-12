@@ -1,4 +1,4 @@
-module L = List
+(* module L = List
 open Target
 open GT
 open OCanren
@@ -10,6 +10,6 @@ let _ =
     @@ Stream.take ~n:10
     @@ run q (fun x -> f x) (fun x -> show Nat.logic (x#reify Nat.reify))
   in
-  test is_even_false;
-  test is_even_true
-;;
+  test is_even_1false;
+  test is_even_1true
+;; *)

@@ -1,10 +1,13 @@
 open Canren
 
-type ('a, 'b) dnf =
+type ('a, 'b) item =
   | DUnify of ('a * 'b)
   | DDisunify of ('a * 'b)
   | DCall of (Path.t * Value.value list)
   | DFresh of Ident.t list
+
+type ('a, 'b) cnj = ('a, 'b) item list
+type ('a, 'b) dnf = ('a, 'b) cnj list
 
 let of_canren canren =
   let wrap x = x |> Core.List.return |> Core.List.return in

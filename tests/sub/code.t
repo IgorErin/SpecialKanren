@@ -49,10 +49,9 @@
       (fun valid ->
          (loe y x valid) &&&
            (conde [(valid === (!! false)) &&& (z === (!! None)); Fresh.one (fun z_value -> ((valid === (!! true)) &&& (z === (!! (Some z_value)))) &&& (add y z_value x))]))
-  let rec loe_2false x y =
+  let rec loe_false x y =
     (Fresh.one (fun pred_x -> (x === (!! (S (pred_x)))) &&& (y === (!! O)))) |||
-      (Fresh.one (fun pred_x -> (x === (!! (S (pred_x)))) &&& (Fresh.one (fun pred_y -> (y === (!! (S (pred_y)))) &&& (loe_2false pred_x pred_y)))))
-  and loe_2true x y =
-    (x === (!! O)) ||| (Fresh.one (fun pred_x -> (x === (!! (S (pred_x)))) &&& (Fresh.one (fun pred_y -> (y === (!! (S (pred_y)))) &&& (loe_2true pred_x pred_y)))))
-  and sub_2None x y = Fresh.one (fun valid -> (loe_2false y x) &&& (valid === (!! false)))
-  and sub_2Some x y new_var0 = Fresh.one (fun valid -> (loe_2true y x) &&& (Fresh.one (fun z_value -> (valid === (!! true)) &&& ((new_var0 === z_value) &&& (add y z_value x)))))
+      (Fresh.one (fun pred_x -> (x === (!! (S (pred_x)))) &&& (Fresh.one (fun pred_y -> (y === (!! (S (pred_y)))) &&& (loe_false pred_x pred_y)))))
+  and loe_true x y = (x === (!! O)) ||| (Fresh.one (fun pred_x -> (x === (!! (S (pred_x)))) &&& (Fresh.one (fun pred_y -> (y === (!! (S (pred_y)))) &&& (loe_true pred_x pred_y)))))
+  and sub_None x y = Fresh.one (fun valid -> (loe_false y x) &&& (valid === (!! false)))
+  and sub_Some x y new_var0 = Fresh.one (fun valid -> (loe_true y x) &&& (Fresh.one (fun z_value -> (valid === (!! true)) &&& ((new_var0 === z_value) &&& (add y z_value x)))))

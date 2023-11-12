@@ -55,8 +55,7 @@ let resolve source env funs =
     let open Semant.Result in
     let postfix =
       source_info.consts
-      |> List.map (fun (num, (x : Types.constructor_description)) ->
-        Int.to_string num ^ x.cstr_name)
+      |> List.map (fun (_, (x : Types.constructor_description)) -> x.cstr_name)
       |> String.concat "_"
     in
     Ident.name source_info.fname ^ "_" ^ postfix
