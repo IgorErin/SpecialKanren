@@ -28,10 +28,7 @@ module Propagate = struct
           info
       in
       let all_valeus_by_value = function
-        | Var ident as v ->
-          (* todo strange add *)
-          let next = all_values_by_ident ident in
-          [ v ] @ next
+        | Var ident as v -> v :: all_values_by_ident ident
         | Constr _ as c -> Core.List.return c
       in
       let rec loop acc front =
