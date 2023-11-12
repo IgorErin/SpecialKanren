@@ -1,13 +1,19 @@
 open Ocanren_patterns
 open Value
 
+type error = Unexpected_ast_structure of string 
+
+exception Error of error 
+
+let error e = raise @@ Error (e)
+
 module Utils = struct
   let get_path exp =
     let open Typedtree in
     exp.exp_desc
     |> function
     | Texp_ident (path, _, _) -> path
-    | _ -> failwith "get path. fail"
+    | _ -> error @@ Unexpected_ast_structure "Path expected"
   ;;
 
   let get_value vars exp =
@@ -21,8 +27,8 @@ module Utils = struct
       | Texp_apply (hd, args) when Ocanren_patterns.is_inj hd ->
         let arg = Assert.un_arg args in
         loop arg
-      | Texp_ident _ -> failwith "Seems like dot ident in values."
-      | _ -> failwith "Get value fail"
+      | Texp_ident _ -> error @@ Unexpected_ast_structure "Seems like dot ident in values"
+      | _ -> error @@ Unexpected_ast_structure "Value expected"
     in
     loop exp
   ;;
@@ -32,7 +38,7 @@ module Utils = struct
     let rec loop acc exp =
       match exp.exp_desc with
       | Texp_function { param; cases = [ { c_rhs; _ } ]; _ } -> loop (param :: acc) c_rhs
-      | Texp_function _ -> failwith "Not implemented. Texp_function in fresh travers"
+      | Texp_function _ -> error @@ Unexpected_ast_structure "Unexpected nontrivial branching"
       | _ -> exp, acc
     in
     loop [] exp
@@ -82,7 +88,7 @@ let of_tast exp =
   let open Typedtree in
   let rec loop (vars : Ident.t list) exp =
     match exp.exp_desc with
-    | Texp_function _ -> failwith "Assumed no functions."
+    | Texp_function _ -> error @@ Unexpected_ast_structure "Assumed no functions."
     | Texp_apply (hd_exp, args) when is_conde hd_exp ->
       let e = Assert.un_arg args in
       loop vars e
@@ -132,6 +138,7 @@ let of_tast exp =
     | _ -> None (* hack to hold :: in conde. rework *)
   in
   let body, global = Utils.get_params exp in
+  let global = List.rev global in 
   global, loop global body
 ;;
 

@@ -6,6 +6,12 @@ type ('a, 'b) raw_fun =
   ; rbody : ('a, 'b) Canren.canren
   }
 
+type error = Str_item_not_found of string | Type_mismatch
+
+exception Error of error  
+
+let error e = raise @@ Error (e)
+
 let get_funs str =
   str.str_items
   |> List.filter_map (fun str ->
@@ -19,7 +25,6 @@ let get_funs str =
     | Tpat_var (ident, _) ->
       let rglobals, canren = Canren.of_tast vb.vb_expr in
       let canren = canren |> Option.get in
-      let rglobals = List.rev rglobals in
       Some { rname = ident; rglobals; rbody = canren }
     | _ -> None)
 ;;
@@ -27,14 +32,14 @@ let get_funs str =
 let find funs path =
   funs
   |> List.find_opt (fun { rname; _ } -> Ident.same path rname)
-  |> Core.Option.value_or_thunk ~default:(fun () -> failwith "Not fun found in str")
+  |> Core.Option.value_or_thunk ~default:(fun () -> error (Str_item_not_found (Ident.name path)))
 ;;
 
 let info_of_consts env globals consts =
   consts
   |> List.map (fun (number, (const_desc : Types.constructor_description)) ->
     List.nth_opt globals number
-    |> Core.Option.value_or_thunk ~default:(fun () -> failwith "arg number out of range")
+    |> Core.Option.value_or_thunk ~default:(fun () -> error Type_mismatch)
     |> fun ident ->
     let parp = Predicate.par_of_ident ident number in
     let varp =

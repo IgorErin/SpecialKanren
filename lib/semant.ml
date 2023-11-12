@@ -3,7 +3,7 @@ open Dnf
 
 type ('a, 'b) result =
   { globals : Ident.t list
-  ; dnf : ('a, 'b) dnf option
+  ; dnf : ('a, 'b) dnf
   }
 
 module Propagate = struct
@@ -188,6 +188,5 @@ let run info globals canren =
       | Some (_, _, vars) -> vars
       | None -> glob |> Core.List.return)
   in
-  let dnf = if Core.List.is_empty result then None else Some result in
-  { dnf; globals }
+  { dnf = result ; globals }
 ;;

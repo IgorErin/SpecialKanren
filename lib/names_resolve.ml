@@ -1,6 +1,12 @@
 open Dnf
 open Value
 
+type error = Unnamed of string 
+
+exception Error of error 
+
+let error e = raise @@ Error e 
+
 type fun_hole = (string * value list) option ref
 type spec_info = (int * Types.constructor_description) list
 
@@ -128,7 +134,7 @@ let to_dnf dnf =
       (match !hole with
        (* TODO *)
        | Some (name, values) -> DCall (Path.Pident (Ident.create_local name), values)
-       | None -> failwith "")
+       | None -> error @@ Unnamed "Hole in resolve representation")
     | FCall (path, values) -> DCall (path, values)
   in
   List.map (fun cnj -> List.map item cnj) dnf

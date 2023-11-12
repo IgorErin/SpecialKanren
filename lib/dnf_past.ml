@@ -3,6 +3,11 @@ open Value
 open Parsetree
 open Ast_helper
 
+type error = Unexpected_item of string 
+exception Error of error 
+
+let error e = raise @@ Error e
+
 let loc = Location.none
 let create_pat ident = Pat.var @@ Location.mknoloc @@ Ident.name ident
 
@@ -107,7 +112,7 @@ let past_of_conj conj =
     | DUnify (ident, value) -> to_past_unify ident value
     | DDisunify (ident, value) -> to_past_disunify ident value
     | DCall (ident, values) -> to_past_call ident values
-    | DFresh _ -> failwith "DFresh unexpected here (TODO)"
+    | DFresh _ -> error @@ Unexpected_item "Fresh in last close"
   in
   (* copy past but compiler aware *)
   let to_past_regular current next =
