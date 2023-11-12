@@ -3,11 +3,11 @@ open Value
 open Parsetree
 open Ast_helper
 
-type error = Unexpected_item of string 
-exception Error of error 
+type error = Unexpected_item of string
+
+exception Error of error
 
 let error e = raise @@ Error e
-
 let loc = Location.none
 let create_pat ident = Pat.var @@ Location.mknoloc @@ Ident.name ident
 
@@ -140,13 +140,7 @@ let past_of_dnf dnf =
 ;;
 
 let create_var source_info =
-  let open Names_resolve in
-  let postfix =
-    source_info.consts
-    |> List.map (fun (_, (x : Types.constructor_description)) -> x.cstr_name)
-    |> String.concat "_"
-  in
-  Ident.name source_info.fname ^ "_" ^ postfix |> Location.mknoloc |> Ast_helper.Pat.var
+  Names_resolve.create_name source_info |> Location.mknoloc |> Ast_helper.Pat.var
 ;;
 
 let create_vb Names_resolve.{ res_info; res_globals; res_dnf; _ } =

@@ -1,11 +1,11 @@
 open Dnf
 open Value
 
-type error = Unnamed of string 
+type error = Unnamed of string
 
-exception Error of error 
+exception Error of error
 
-let error e = raise @@ Error e 
+let error e = raise @@ Error e
 
 type fun_hole = (string * value list) option ref
 type spec_info = (int * Types.constructor_description) list
@@ -138,4 +138,13 @@ let to_dnf dnf =
     | FCall (path, values) -> DCall (path, values)
   in
   List.map (fun cnj -> List.map item cnj) dnf
+;;
+
+let create_name source_info =
+  let postfix =
+    source_info.consts
+    |> List.map (fun (_, (x : Types.constructor_description)) -> x.cstr_name)
+    |> String.concat "_"
+  in
+  Ident.name source_info.fname ^ "_" ^ postfix
 ;;

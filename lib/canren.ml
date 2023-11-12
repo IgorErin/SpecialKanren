@@ -1,11 +1,11 @@
 open Ocanren_patterns
 open Value
 
-type error = Unexpected_ast_structure of string 
+type error = Unexpected_ast_structure of string
 
-exception Error of error 
+exception Error of error
 
-let error e = raise @@ Error (e)
+let error e = raise @@ Error e
 
 module Utils = struct
   let get_path exp =
@@ -38,7 +38,8 @@ module Utils = struct
     let rec loop acc exp =
       match exp.exp_desc with
       | Texp_function { param; cases = [ { c_rhs; _ } ]; _ } -> loop (param :: acc) c_rhs
-      | Texp_function _ -> error @@ Unexpected_ast_structure "Unexpected nontrivial branching"
+      | Texp_function _ ->
+        error @@ Unexpected_ast_structure "Unexpected nontrivial branching"
       | _ -> exp, acc
     in
     loop [] exp
@@ -138,7 +139,7 @@ let of_tast exp =
     | _ -> None (* hack to hold :: in conde. rework *)
   in
   let body, global = Utils.get_params exp in
-  let global = List.rev global in 
+  let global = List.rev global in
   global, loop global body
 ;;
 

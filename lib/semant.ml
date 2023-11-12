@@ -188,5 +188,5 @@ let run info globals canren =
       | Some (_, _, vars) -> vars
       | None -> glob |> Core.List.return)
   in
-  { dnf = result ; globals }
+  { dnf = result; globals }
 ;;

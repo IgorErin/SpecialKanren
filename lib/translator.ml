@@ -6,11 +6,13 @@ type ('a, 'b) raw_fun =
   ; rbody : ('a, 'b) Canren.canren
   }
 
-type error = Str_item_not_found of string | Type_mismatch
+type error =
+  | Str_item_not_found of string
+  | Type_mismatch
 
-exception Error of error  
+exception Error of error
 
-let error e = raise @@ Error (e)
+let error e = raise @@ Error e
 
 let get_funs str =
   str.str_items
@@ -32,7 +34,8 @@ let get_funs str =
 let find funs path =
   funs
   |> List.find_opt (fun { rname; _ } -> Ident.same path rname)
-  |> Core.Option.value_or_thunk ~default:(fun () -> error (Str_item_not_found (Ident.name path)))
+  |> Core.Option.value_or_thunk ~default:(fun () ->
+    error (Str_item_not_found (Ident.name path)))
 ;;
 
 let info_of_consts env globals consts =
@@ -59,18 +62,9 @@ let step funs env Names_resolve.{ fname; consts } =
 ;;
 
 let resolve source env funs =
-  let create_name source_info =
-    let open Names_resolve in
-    let postfix =
-      source_info.consts
-      |> List.map (fun (_, (x : Types.constructor_description)) -> x.cstr_name)
-      |> String.concat "_"
-    in
-    Ident.name source_info.fname ^ "_" ^ postfix
-  in
   let trans = step funs env in
   let set_call_self Names_resolve.{ href; hfinfo; hargs; _ } =
-    href := Some (create_name hfinfo, hargs)
+    href := Some (Names_resolve.create_name hfinfo, hargs)
   in
   let filter acc deps =
     let open Names_resolve in
