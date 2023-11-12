@@ -125,11 +125,10 @@ let of_tast exp =
       Option.some (Disunify (fst, snd))
       (* fresh *)
     | Texp_apply (hd, args) when is_fresh hd ->
-      (* TODO if fresh var unif with variant *)
       let e = Assert.un_arg args in
       let exp, new_fresh = Utils.get_params e in
       let vars = vars @ new_fresh in
-      Option.map (fun x -> Fresh (new_fresh, x)) @@ loop vars exp
+      Option.map (fun x -> Fresh (List.rev new_fresh, x)) @@ loop vars exp
     | Texp_apply (hd_exp, args) ->
       let args = Assert.args args in
       let args = List.map (Utils.get_value vars) args in

@@ -72,7 +72,7 @@ let rec is_even n res =
 ;;
 
 ```
-The parity ratio, well, what's complicated here. However, the implementation presented above depends exponentially on `n'.
+The parity ratio, well, what's complicated here. However, the implementation presented above depends exponentially on `n`.
 
 But the specialized program depends linearly.
 
