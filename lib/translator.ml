@@ -56,7 +56,7 @@ let step funs env Names_resolve.{ fname; consts } =
   let { rglobals; rbody; _ } = find funs fname in
   let info = info_of_consts env rglobals consts in
   let Semant.{ dnf; globals } = Semant.run info rglobals rbody in
-  let res_dnf, res_deps = dnf |> Names_resolve.process in
+  let res_dnf, res_deps = dnf |> Names_resolve.process globals in
   let consts = info |> List.map (fun (par, var) -> par#number, var#desc) in
   Names_resolve.{ res_dnf; res_deps; res_info = { fname; consts }; res_globals = globals }
 ;;

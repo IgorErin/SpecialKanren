@@ -50,7 +50,7 @@ let equal fst snd =
   Ident.same fst.fname snd.fname && consts_same
 ;;
 
-let fetch conj =
+let fetch is_par conj =
   let get = function
     | DCall (f_path, args) ->
       let consts =
@@ -60,7 +60,7 @@ let fetch conj =
           | Var _ -> None)
         |> List.filter_map (fun x -> x)
       in
-      if Core.List.is_empty consts
+      if Core.List.is_empty consts || (is_par @@ Path.head f_path)
       then FCall (f_path, args), None
       else (
         let hargs =
@@ -83,8 +83,9 @@ let fetch conj =
   fdnf, funs
 ;;
 
-let process dnf : _ dnf * hole_info list =
-  let dnf, funs = List.map fetch dnf |> Core.List.unzip in
+let process globals dnf : _ dnf * hole_info list =
+  let is_par ident = List.exists (Ident.same ident) globals in
+  let dnf, funs = List.map (fetch is_par) dnf |> Core.List.unzip in
   let funs = List.concat funs in
   dnf, funs
 ;;
