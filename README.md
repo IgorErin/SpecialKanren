@@ -2,8 +2,8 @@
 
 An attempt to specialize relational programs by arguments with a finite domain.
 
-## Relational programming.
-Relational programming is all about relationships.
+## Relational programming
+Relational programming is all about relations.
 
 Having expressed a certain problem as an relation, you can run it in different directions. Each such direction represents a separate function. For example, the ratio is less than or equal to, represents a function that tells two numbers whether the above-mentioned ratio is satisfies them, as its last argument. However, if we explicitly say that the relation holds, then we can get a generator of all such numbers.
 
@@ -112,7 +112,7 @@ The benchmark is presented below. The comparison was made using the [ocaml-bench
 | `spec_false`  | 7.33/s |    55%  |    51% |      ---     |      0%     |
 | `spec_true`   | 7.34/s |    55%  |    51% |       0%     |      ---    |
 
-The benchmark code is located [here](TODO).
+The benchmark code is located [here](https://github.com/IgorErin/SpecialKanren/blob/master/tests/is_even/bench.ml).
 
 
 ## A bit more sadness
@@ -148,7 +148,7 @@ But for the subtraction ratio, things aren't so fun anymore. But still the versi
 | `spec_none` |     10.9/s |   11313%  |  11098%   |     ---    |   -7%      |
 | `none` |     11.7/s |   12185%  |  11953%   |     8%    |    ---      |
 
-The benchmark code is located [here](TODO).
+The benchmark code is located [here](https://github.com/IgorErin/SpecialKanren/blob/master/tests/sub/bench.ml).
 
 ## Further work
 - Reduce unnecessary variables. This becomes difficult with recursive calls and with the =/= relation.
