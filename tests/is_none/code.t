@@ -20,5 +20,5 @@
   
   let rec is_none_None x = x === !!true
   
-  and is_none_Some x new_var0 =
-    x === !!false &&& Fresh.one (fun x' -> new_var0 === x')
+  and is_none_Some x some_arg_0 =
+    x === !!false &&& Fresh.one (fun x' -> some_arg_0 === x')

@@ -159,11 +159,11 @@ let past_of_dnf dnf =
 ;;
 
 let create_var source_info =
-  Names_resolve.create_name source_info |> Location.mknoloc |> Ast_helper.Pat.var
+  Global.create_name source_info |> Location.mknoloc |> Ast_helper.Pat.var
 ;;
 
-let create_vb Names_resolve.{ res_info; res_globals; res_dnf; _ } =
-  let dnf = Names_resolve.to_dnf res_dnf in
+let create_vb Global.{ res_info; res_globals; res_dnf; _ } =
+  let dnf = Global.to_dnf res_dnf in
   let body = past_of_dnf dnf in
   let f = Prim.create_fun_closer res_globals body in
   Vb.mk (create_var res_info) f

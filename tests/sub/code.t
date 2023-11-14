@@ -88,6 +88,6 @@
   
   and sub_None x y = loe_false y x
   
-  and sub_Some x y new_var0 =
+  and sub_Some x y some_arg_0 =
     loe_true y x
-    &&& Fresh.one (fun z_value -> new_var0 === z_value &&& add y z_value x)
+    &&& Fresh.one (fun z_value -> some_arg_0 === z_value &&& add y z_value x)

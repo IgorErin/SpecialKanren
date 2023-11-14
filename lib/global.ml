@@ -7,7 +7,7 @@ exception Error of error
 
 let error e = raise @@ Error e
 
-type fun_hole = (string * value list) option ref
+type fun_hole = (string * Value.t list) option
 type spec_info = (int * Types.constructor_description) list
 
 type fun_info =
@@ -17,16 +17,13 @@ type fun_info =
 
 type hole_info =
   { hfinfo : fun_info
-  ; href : fun_hole
-  ; hargs : value list
+  ; href : fun_hole ref
+  ; hargs : Value.t list
   }
 
 type ('a, 'b) item =
-  | FUnify of 'a * 'b
-  | FDisunify of 'a * 'b
-  | FFresh of Ident.t list
-  | FCallHole of fun_hole
-  | FCall of (Path.t * value list)
+  | Node of 'a
+  | Hole of 'b option ref
 
 type ('a, 'b) conj = ('a, 'b) item list
 type ('a, 'b) dnf = ('a, 'b) conj list
@@ -52,7 +49,7 @@ let equal fst snd =
 
 let fetch is_par conj =
   let get = function
-    | DCall (f_path, args) ->
+    | DCall (f_path, args) as call ->
       let consts =
         args
         |> List.mapi (fun index -> function
@@ -61,7 +58,7 @@ let fetch is_par conj =
         |> List.filter_map (fun x -> x)
       in
       if Core.List.is_empty consts || (is_par @@ Path.head f_path)
-      then FCall (f_path, args), None
+      then Node call, None
       else (
         let hargs =
           List.concat_map
@@ -71,12 +68,9 @@ let fetch is_par conj =
             args
         in
         let href = ref None in
-        let fname = Path.head f_path in
-        let hfinfo = { fname; consts } in
-        FCallHole href, Some { href; hfinfo; hargs })
-    | DUnify (left, right) -> FUnify (left, right), None
-    | DDisunify (left, right) -> FDisunify (left, right), None
-    | DFresh vars -> FFresh vars, None
+        let hfinfo = { fname = Path.head f_path; consts } in
+        Hole href, Some { href; hfinfo; hargs })
+    | x -> Node x, None
   in
   let fdnf, funs = List.map get conj |> Core.List.unzip in
   let funs = List.filter_map (fun x -> x) funs in
@@ -90,6 +84,8 @@ let process globals dnf : _ dnf * hole_info list =
   dnf, funs
 ;;
 
+let get a = !a |> Core.Option.value_or_thunk ~default:(fun () -> failwith "Hole")
+
 let pp f =
   let pfst f ident = Format.fprintf f "%s" @@ Ident.name ident in
   let psnd f value = Format.fprintf f "%s" @@ Value.to_string value in
@@ -99,44 +95,16 @@ let pp f =
       (fun x ->
         Format.printf " && ";
         match x with
-        | FUnify (fst, snd) ->
-          pfst f fst;
-          Format.fprintf f "===";
-          psnd f snd
-        | FDisunify (fst, snd) ->
-          Format.fprintf f "(";
-          pfst f fst;
-          Format.fprintf f "=/=";
-          psnd f snd
-        | FCall (ident, values) ->
-          Format.fprintf f "%s (" @@ Path.name ident;
-          List.iter (fun v -> Format.fprintf f "%s" @@ Value.to_string v) values;
-          Format.fprintf f ")"
-        | FCallHole rf ->
-          (match !rf with
-           | Some (name, values) ->
-             Format.fprintf f "%s (" name;
-             List.iter (fun v -> Format.fprintf f "%s" @@ Value.to_string v) values;
-             Format.fprintf f ")"
-           | None -> Format.printf "HOLE")
-        | FFresh freshs ->
-          Format.fprintf f "Fresh (";
-          List.iter (fun i -> Format.fprintf f "%s " @@ Ident.name i) freshs;
-          Format.fprintf f ")")
+        | Node item -> Dnf.pp f pfst psnd item
+        | Hole a -> get a |> Dnf.pp f pfst psnd)
       l)
 ;;
 
 let to_dnf dnf =
+  let hole_to_dnf (fst, values) = DCall (Path.Pident (Ident.create_local fst), values) in
   let item = function
-    | FUnify (left, right) -> DUnify (left, right)
-    | FDisunify (left, right) -> DDisunify (left, right)
-    | FFresh fresh -> DFresh fresh
-    | FCallHole hole ->
-      (match !hole with
-       (* TODO *)
-       | Some (name, values) -> DCall (Path.Pident (Ident.create_local name), values)
-       | None -> error @@ Unnamed "Hole in resolve representation")
-    | FCall (path, values) -> DCall (path, values)
+    | Node x -> x
+    | Hole x -> get x |> hole_to_dnf
   in
   List.map (fun cnj -> List.map item cnj) dnf
 ;;
@@ -148,4 +116,45 @@ let create_name source_info =
     |> String.concat "_"
   in
   Ident.name source_info.fname ^ "_" ^ postfix
+;;
+
+let step get create_info { fname; consts } =
+  let globals, canren = get fname in
+  let freshs = Canren.get_declared_fresh_vars canren in
+  let info = create_info globals consts in
+  let dnf = Dnf.of_canren canren in
+  let Local.{ dnf; globals } = Local.run ~info ~freshs ~globals ~dnf in
+  let res_dnf, res_deps = dnf |> process globals in
+  { res_dnf; res_deps; res_info = { fname; consts }; res_globals = globals }
+;;
+
+let closer step source =
+  let set_call_self { href; hfinfo; hargs; _ } =
+    href := Some (create_name hfinfo, hargs)
+  in
+  let filter acc deps =
+    deps
+    |> List.filter_map (fun (hole : hole_info) ->
+      List.find_opt (fun item -> equal hole.hfinfo item.res_info) acc
+      |> function
+      | Some _ ->
+        set_call_self hole;
+        None
+      | _ -> Some hole)
+  in
+  let rec loop acc deps =
+    let deps = filter acc deps in
+    let front = List.map (fun hole -> step hole.hfinfo) deps in
+    let deps = List.concat_map (fun res -> res.res_deps) front @ deps |> filter acc in
+    let acc = front @ acc in
+    if Core.List.is_empty deps then acc else loop acc deps
+  in
+  let init = List.map step source in
+  let deps = init |> List.concat_map (fun { res_deps; _ } -> res_deps) |> filter init in
+  loop init deps
+;;
+
+let run (source : fun_info list) get create_info =
+  let step = step get create_info in
+  closer step source
 ;;

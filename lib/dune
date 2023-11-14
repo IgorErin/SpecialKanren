@@ -2,16 +2,16 @@
  (libraries base core compiler-libs.common OCanren)
  (modules
   Assert
-  Semant
+  Local
   Patterns
-  Translator
+  Outer
   Ocanren_patterns
   Predicate
   Typespat
   Validate
   Canren
   Dnf
-  Names_resolve
+  Global
   Value
   Dnf_past)
  (name SpecialKanren)

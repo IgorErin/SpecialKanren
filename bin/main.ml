@@ -69,10 +69,10 @@ let () =
     match ff with
     | Ml ->
       let str = read_ml path in
-      SpecialKanren.Translator.translate funp parp str
+      SpecialKanren.Outer.translate funp parp str
     | Cmt ->
       let str = read_cmt path in
-      SpecialKanren.Translator.translate funp parp str
+      SpecialKanren.Outer.translate funp parp str
   in
   match out with
   | Some output_name ->

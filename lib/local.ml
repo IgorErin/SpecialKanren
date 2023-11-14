@@ -6,8 +6,20 @@ type ('a, 'b) result =
   ; dnf : ('a, 'b) dnf
   }
 
-module Names = struct
-  let travers_graph (cnj : _ cnj) =
+module Utils = struct
+  let mk_new_var_fun vars seed =
+    let count = ref 0 in
+    let rec result () =
+      let seed = String.lowercase_ascii seed in
+      let new_name = Printf.sprintf "%s_arg_%d" seed @@ !count in
+      count := !count + 1;
+      let ident = Ident.create_local new_name in
+      if List.exists (Ident.same ident) vars then result () else ident
+    in
+    result
+  ;;
+
+  let travers_unify_graph (cnj : _ cnj) =
     let info =
       List.map
         (function
@@ -17,7 +29,7 @@ module Names = struct
         cnj
       |> List.concat
     in
-    let names = List.map fst info in
+    let names = List.map fst info |> Core.List.dedup_and_sort ~compare:Ident.compare in
     (* bfs *)
     let get_values name =
       let isame = Ident.same in
@@ -36,16 +48,16 @@ module Names = struct
         let diff =
           List.filter (fun name -> not @@ List.exists (vsame name) acc) new_front
         in
-        match diff with
-        | [] -> acc
-        | _ :: _ -> loop (acc @ diff) new_front
+        if Core.List.is_empty diff then acc else loop (acc @ diff) new_front
       in
       let result = loop [] [ Var name ] in
       name, result
     in
     names |> List.map get_values
   ;;
+end
 
+module Propagate = struct
   let infer_result values =
     let vars, consts = Core.List.partition_map ~f:Value.partition values in
     match vars, consts with
@@ -58,12 +70,12 @@ module Names = struct
       | hd :: _ -> Some hd)
   ;;
 
-  let try_propagate conj =
-    let values = travers_graph conj in
+  let in_call conj =
+    let values = Utils.travers_unify_graph conj in
     let map =
-      List.filter_map
-        (fun (name, value) -> Option.map (fun vl -> name, vl) @@ infer_result value)
-        values
+      values
+      |> List.filter_map (fun (name, value) ->
+        Option.map (fun vl -> name, vl) @@ infer_result value)
     in
     let subst_var = function
       | Var v ->
@@ -84,8 +96,10 @@ module Names = struct
     in
     List.map map_call conj
   ;;
+end
 
-  let is_used ident conj =
+module Reduce = struct
+  let is_used ident (conj : (Ident.t, Value.t) cnj) =
     let rec used_value = function
       | Var v -> Ident.same ident v
       | Constr (_, values) -> List.exists used_value values
@@ -100,11 +114,10 @@ module Names = struct
   ;;
 
   let is_redudant ident conj =
-    let info = travers_graph conj in
+    let info = Utils.travers_unify_graph conj in
     let opt_values = List.find_opt (fun (fst, _) -> Ident.same ident fst) info in
     let is_used = is_used ident conj in
     let same = Ident.same ident in
-    (* Format.printf " is_used: %b " is_used; *)
     (match opt_values with
      | Some (_, values) ->
        let vars, consts = Core.List.partition_map ~f:Value.partition values in
@@ -161,86 +174,74 @@ end
 
 exception Reduced
 
-let reduce_const_const (dnf : _ cnj) : _ cnj option =
-  let lr = Core.List.return in
-  let reduced () = raise Reduced in
-  let rec loop = function
-    | DUnify (Var v, next) | DUnify (next, Var v) -> DUnify (v, next) |> lr
-    | DDisunify (Var v, next) | DDisunify (next, Var v) -> DDisunify (v, next) |> lr
-    | DCall (ident, values) -> DCall (ident, values) |> lr
-    | DFresh _ as f -> f |> lr
-    | DUnify (Constr (ld, lv), Constr (rd, rv)) ->
-      if Types.may_equal_constr ld rd
-      then List.map2 (fun lv rv -> loop @@ DUnify (lv, rv)) lv rv |> List.concat
-      else reduced ()
-    | DDisunify (Constr (ld, lv), Constr (rd, rv)) ->
-      if Types.may_equal_constr ld rd
-      then List.map2 (fun lv rv -> loop @@ DDisunify (lv, rv)) lv rv |> List.concat
-      else reduced ()
-  in
-  try List.map loop dnf |> List.concat |> Option.some with
-  | Reduced -> None
-  | e -> raise e
-;;
+module Passes = struct
+  let reduce_const_const (dnf : _ cnj) : _ cnj option =
+    let lr = Core.List.return in
+    let reduced () = raise Reduced in
+    let rec loop = function
+      | DUnify (Var v, next) | DUnify (next, Var v) -> DUnify (v, next) |> lr
+      | DDisunify (Var v, next) | DDisunify (next, Var v) -> DDisunify (v, next) |> lr
+      | DCall (ident, values) -> DCall (ident, values) |> lr
+      | DFresh _ as f -> f |> lr
+      | DUnify (Constr (ld, lv), Constr (rd, rv)) ->
+        if Types.may_equal_constr ld rd
+        then List.map2 (fun lv rv -> loop @@ DUnify (lv, rv)) lv rv |> List.concat
+        else reduced ()
+      | DDisunify (Constr (ld, lv), Constr (rd, rv)) ->
+        if Types.may_equal_constr ld rd
+        then List.map2 (fun lv rv -> loop @@ DDisunify (lv, rv)) lv rv |> List.concat
+        else reduced ()
+    in
+    try List.map loop dnf |> List.concat |> Option.some with
+    | Reduced -> None
+    | e -> raise e
+  ;;
 
-let subst_const (is_par : Ident.t -> bool) const vars dnf =
-  let new_const = Constr (const#desc, List.map (fun v -> Var v) vars) in
-  (* ad hoc substitution TODO () *)
-  let map_unify left right =
-    match left, right with
-    | ident, right when is_par ident -> DUnify (new_const, right)
-    | ident, Var v when is_par ident -> DUnify (Var v, new_const)
-    | ident, Var v when is_par v -> DUnify (Var ident, new_const)
-    | _ -> DUnify (Var left, right)
-  in
-  let map_disunify left right =
-    match left, right with
-    | ident, right when is_par ident -> DDisunify (new_const, right)
-    | ident, Var v when is_par v -> DDisunify (Var ident, new_const)
-    | _ -> DDisunify (Var left, right)
-  in
-  let map_var = function
-    | Var v when is_par v -> new_const
-    | x -> x
-  in
-  dnf
-  |> List.map (function
-    | DUnify (left, right) -> map_unify left right
-    | DDisunify (left, right) -> map_disunify left right
-    | DCall (name, values) ->
-      let values = List.map map_var values in
-      DCall (name, values)
-    | DFresh f -> DFresh f)
-;;
-
-let mk_new_var_fun vars =
-  let count = ref 0 in
-  let rec result () =
-    let new_name = Printf.sprintf "new_var%d" @@ !count in
-    count := !count + 1;
-    let ident = Ident.create_local new_name in
-    if List.exists (Ident.same ident) vars then result () else ident
-  in
-  result
-;;
+  let subst_const (is_par : Ident.t -> bool) const vars dnf =
+    let new_const = Constr (const#desc, List.map (fun v -> Var v) vars) in
+    (* ad hoc substitution TODO () *)
+    let map_unify left right =
+      match left, right with
+      | ident, right when is_par ident -> DUnify (new_const, right)
+      | ident, Var v when is_par ident -> DUnify (Var v, new_const)
+      | ident, Var v when is_par v -> DUnify (Var ident, new_const)
+      | _ -> DUnify (Var left, right)
+    in
+    let map_disunify left right =
+      match left, right with
+      | ident, right when is_par ident -> DDisunify (new_const, right)
+      | ident, Var v when is_par v -> DDisunify (Var ident, new_const)
+      | _ -> DDisunify (Var left, right)
+    in
+    let map_var = function
+      | Var v when is_par v -> new_const
+      | x -> x
+    in
+    dnf
+    |> List.map (function
+      | DUnify (left, right) -> map_unify left right
+      | DDisunify (left, right) -> map_disunify left right
+      | DCall (name, values) ->
+        let values = List.map map_var values in
+        DCall (name, values)
+      | DFresh f -> DFresh f)
+  ;;
+end
 
 let run_per_const par const const_vars dnf =
-  let dnf = List.map (subst_const par#by_ident const const_vars) dnf in
-  let dnf = dnf |> List.map reduce_const_const |> List.filter_map (fun x -> x) in
-  let dnf = List.map Names.try_propagate dnf in
+  let dnf = List.map (Passes.subst_const par#by_ident const const_vars) dnf in
+  let dnf = dnf |> List.map Passes.reduce_const_const |> List.filter_map (fun x -> x) in
+  let dnf = List.map Propagate.in_call dnf in
   dnf
 ;;
 
-let run info globals canren =
-  let fresh_vars = Canren.get_declared_fresh_vars canren in
-  let new_var = mk_new_var_fun (globals @ fresh_vars) in
-  let dnf =
-    canren |> Dnf.of_canren |> List.map reduce_const_const |> List.filter_map (fun x -> x)
-  in
+let run ~info ~freshs ~globals ~dnf =
+  let new_var = Utils.mk_new_var_fun (globals @ freshs) in
+  let dnf = dnf |> List.map Passes.reduce_const_const |> List.filter_map (fun x -> x) in
   let consts_info =
     List.map
       (fun (pat, const) ->
-        let const_vars = List.init const#arity (fun _ -> new_var ()) in
+        let const_vars = List.init const#arity (fun _ -> new_var const#name ()) in
         pat, const, const_vars)
       info
   in
@@ -249,8 +250,8 @@ let run info globals canren =
       (fun acc (par, const, const_vars) -> run_per_const par const const_vars acc)
       dnf
       consts_info
-    |> List.map Names.try_reduce
-    |> List.map Names.remove_empty_fresh
+    |> List.map Reduce.try_reduce
+    |> List.map Reduce.remove_empty_fresh
   in
   let globals =
     globals

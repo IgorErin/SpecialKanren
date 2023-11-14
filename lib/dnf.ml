@@ -3,7 +3,7 @@ open Canren
 type ('a, 'b) item =
   | DUnify of ('a * 'b)
   | DDisunify of ('a * 'b)
-  | DCall of (Path.t * Value.value list)
+  | DCall of (Path.t * Value.t list)
   | DFresh of Ident.t list
 
 type ('a, 'b) cnj = ('a, 'b) item list

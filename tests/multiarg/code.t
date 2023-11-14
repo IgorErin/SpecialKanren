@@ -38,7 +38,7 @@
       ]
   
   let rec spec_true_true_None = failwith "Reduced"
-  and spec_false_false_Some new_var0 = Fresh.one (fun x -> new_var0 === x)
+  and spec_false_false_Some some_arg_0 = Fresh.one (fun x -> some_arg_0 === x)
   
   and rel_false =
     spec_true_true_None ||| Fresh.one (fun x -> spec_false_false_Some x)

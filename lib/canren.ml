@@ -5,6 +5,14 @@ type error = Unexpected_ast_structure of string
 
 exception Error of error
 
+type ('a, 'b) canren =
+  | Call of Path.t * Value.t list
+  | Fresh of Ident.t list * ('a, 'b) canren
+  | Unify of 'a * 'b
+  | Disunify of 'a * 'b
+  | Disj of ('a, 'b) canren * ('a, 'b) canren
+  | Conj of ('a, 'b) canren * ('a, 'b) canren
+
 let error e = raise @@ Error e
 
 module Utils = struct
@@ -45,14 +53,6 @@ module Utils = struct
     loop [] exp
   ;;
 end
-
-type ('a, 'b) canren =
-  | Call of Path.t * value list
-  | Fresh of Ident.t list * ('a, 'b) canren
-  | Unify of 'a * 'b
-  | Disunify of 'a * 'b
-  | Disj of ('a, 'b) canren * ('a, 'b) canren
-  | Conj of ('a, 'b) canren * ('a, 'b) canren
 
 let rec pp f pfst psnd = function
   | Call (ident, values) ->

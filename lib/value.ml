@@ -1,6 +1,6 @@
-type const = Types.constructor_description * value list
+type const = Types.constructor_description * t list
 
-and value =
+and t =
   | Var of Ident.t
   | Constr of const
 
@@ -20,6 +20,20 @@ let rec same left right =
     Types.may_equal_constr ld rd
     && List.combine lvs rvs |> List.for_all (fun (f, s) -> same f s)
   | _ -> false
+;;
+
+let compare left right =
+  let list x = x |> List.find_opt (( <> ) 0) |> Option.value ~default:0 in
+  let rec value left right =
+    match left, right with
+    | Var fst, Var snd -> Ident.compare fst snd
+    | Var _, Constr _ -> -1
+    | Constr _, Var _ -> 1
+    | Constr (fd, fvs), Constr (sd, svs) ->
+      let d = String.compare fd.cstr_name sd.cstr_name in
+      if d = 0 then List.map2 value fvs svs |> list else 0
+  in
+  value left right
 ;;
 
 let is_var = function
@@ -47,7 +61,7 @@ let constr_get = function
   | _ -> failwith "Not a Constr"
 ;;
 
-let partition : value -> (Ident.t, const) Core.Either.t =
+let partition : t -> (Ident.t, const) Core.Either.t =
   let open Core in
   function
   | Var v -> Either.First v
