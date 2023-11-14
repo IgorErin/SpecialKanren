@@ -37,10 +37,8 @@
       ]
   
   let rec is_even_false n =
-    Fresh.two (fun pred_n not_res ->
-        n === !!(S pred_n) &&& (not_res === !!true &&& is_even_true pred_n))
+    Fresh.one (fun pred_n -> n === !!(S pred_n) &&& is_even_true pred_n)
   
   and is_even_true n =
     n === !!O
-    ||| Fresh.two (fun pred_n not_res ->
-            n === !!(S pred_n) &&& (not_res === !!false &&& is_even_false pred_n))
+    ||| Fresh.one (fun pred_n -> n === !!(S pred_n) &&& is_even_false pred_n)

@@ -17,4 +17,7 @@
  (modules run value))
 
 (cram
- (deps ./run.exe src.ml))
+ (deps
+  ./run.exe
+  src.ml
+  (package SpecialKanren)))

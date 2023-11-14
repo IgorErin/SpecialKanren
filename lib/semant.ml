@@ -6,8 +6,8 @@ type ('a, 'b) result =
   ; dnf : ('a, 'b) dnf
   }
 
-module Propagate = struct
-  let travers_graph cnj =
+module Names = struct
+  let travers_graph (cnj : _ cnj) =
     let info =
       List.map
         (function
@@ -84,6 +84,79 @@ module Propagate = struct
     in
     List.map map_call conj
   ;;
+
+  let is_used ident conj =
+    let rec used_value = function
+      | Var v -> Ident.same ident v
+      | Constr (_, values) -> List.exists used_value values
+    in
+    List.exists
+      (function
+       | DDisunify (_, Constr (_, values))
+       | DUnify (_, Constr (_, values))
+       | DCall (_, values) -> List.exists used_value values
+       | _ -> false)
+      conj
+  ;;
+
+  let is_redudant ident conj =
+    let info = travers_graph conj in
+    let opt_values = List.find_opt (fun (fst, _) -> Ident.same ident fst) info in
+    let is_used = is_used ident conj in
+    let same = Ident.same ident in
+    (* Format.printf " is_used: %b " is_used; *)
+    (match opt_values with
+     | Some (_, values) ->
+       let vars, consts = Core.List.partition_map ~f:Value.partition values in
+       let vars = List.filter (fun x -> x |> same |> not) vars in
+       let only_ground =
+         consts
+         |> List.concat_map (fun (_, values) -> values)
+         |> List.for_all Value.is_ground
+       in
+       let is_empty = Core.List.is_empty vars in
+       is_empty && only_ground
+     | None -> true)
+    |> ( && ) (not is_used)
+  ;;
+
+  let reduce ident conj =
+    let same = Ident.same ident in
+    List.filter_map
+      (function
+       | DUnify (id, Var v) when same id || same v -> None
+       | DDisunify (id, Var v) when same id || same v -> None
+       | DUnify (id, Constr _) when same id -> None
+       | DDisunify (id, Constr _) when same id -> None
+       | DFresh freshs ->
+         Option.some @@ DFresh (List.filter (fun x -> x |> same |> not) freshs)
+       | x -> Some x)
+      conj
+  ;;
+
+  let get_freshs list =
+    list
+    |> List.fold_left
+         (fun acc -> function
+           | DFresh freshs -> freshs @ acc
+           | _ -> acc)
+         []
+  ;;
+
+  let try_reduce cnj =
+    let freshs = get_freshs cnj in
+    List.fold_left
+      (fun cnj fresh -> if is_redudant fresh cnj then reduce fresh cnj else cnj)
+      cnj
+      freshs
+  ;;
+
+  let remove_empty_fresh cnj =
+    cnj
+    |> List.filter_map (function
+      | DFresh [] -> None
+      | x -> Some x)
+  ;;
 end
 
 exception Reduced
@@ -154,7 +227,7 @@ let mk_new_var_fun vars =
 let run_per_const par const const_vars dnf =
   let dnf = List.map (subst_const par#by_ident const const_vars) dnf in
   let dnf = dnf |> List.map reduce_const_const |> List.filter_map (fun x -> x) in
-  let dnf = List.map Propagate.try_propagate dnf in
+  let dnf = List.map Names.try_propagate dnf in
   dnf
 ;;
 
@@ -176,6 +249,8 @@ let run info globals canren =
       (fun acc (par, const, const_vars) -> run_per_const par const const_vars acc)
       dnf
       consts_info
+    |> List.map Names.try_reduce
+    |> List.map Names.remove_empty_fresh
   in
   let globals =
     globals

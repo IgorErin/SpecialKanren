@@ -31,4 +31,8 @@
  (modules target_bench bench))
 
 (cram
- (deps target.ml ./run.exe src.ml))
+ (deps
+  target.ml
+  ./run.exe
+  src.ml
+  (package SpecialKanren)))

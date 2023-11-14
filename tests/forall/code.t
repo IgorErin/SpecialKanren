@@ -36,17 +36,12 @@
       ]
   
   let rec for_allo_false pred l =
-    Fresh.three (fun x xs pred_res ->
-        l
-        === !!(Cons (x, xs))
-        &&& (pred x !!true &&& (pred_res === !!true &&& for_allo_false pred xs)))
-    ||| Fresh.three (fun x xs pred_res ->
-            l === !!(Cons (x, xs)) &&& (pred x !!false &&& (pred_res === !!false)))
+    Fresh.two (fun x xs ->
+        l === !!(Cons (x, xs)) &&& (pred x !!true &&& for_allo_false pred xs))
+    ||| Fresh.two (fun x xs -> l === !!(Cons (x, xs)) &&& pred x !!false)
   
   and for_allo_true pred l =
     l === !!Nil
-    ||| Fresh.three (fun x xs pred_res ->
-            l
-            === !!(Cons (x, xs))
-            &&& (pred x !!true &&& (pred_res === !!true &&& for_allo_true pred xs)))
+    ||| Fresh.two (fun x xs ->
+            l === !!(Cons (x, xs)) &&& (pred x !!true &&& for_allo_true pred xs))
 but doesnt work for l and pred TODO()

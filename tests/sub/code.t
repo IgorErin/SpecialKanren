@@ -86,11 +86,8 @@
             &&& Fresh.one (fun pred_y ->
                     y === !!(S pred_y) &&& loe_true pred_x pred_y))
   
-  and sub_None x y =
-    Fresh.one (fun valid -> loe_false y x &&& (valid === !!false))
+  and sub_None x y = loe_false y x
   
   and sub_Some x y new_var0 =
-    Fresh.one (fun valid ->
-        loe_true y x
-        &&& Fresh.one (fun z_value ->
-                valid === !!true &&& (new_var0 === z_value &&& add y z_value x)))
+    loe_true y x
+    &&& Fresh.one (fun z_value -> new_var0 === z_value &&& add y z_value x)

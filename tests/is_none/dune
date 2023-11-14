@@ -17,4 +17,7 @@
  (modules is_none is_none_run))
 
 (cram
- (deps ./is_none_run.exe is_none.src.ml))
+ (deps
+  ./is_none_run.exe
+  is_none.src.ml
+  (package SpecialKanren)))
