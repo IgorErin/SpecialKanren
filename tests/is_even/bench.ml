@@ -21,22 +21,29 @@ let run_true =
   run_gen (fun x -> Target_bench.is_even x !!true)
 ;;
 
+let numbers = Base.List.init 3 ~f:(fun index -> Core.Int.pow 10 (Int.add index 1))
+let start list = latencyN ~repeat:10 ~style:Nil 30L list
+
 let () =
-  let numbers = Base.List.init 3 ~f:(fun index -> Core.Int.pow 10 (Int.add index 1)) in
   let open OCanren in
   numbers
   |> List.iter (fun number ->
     Printf.printf "number = %d \n" number;
-    let res =
-      latencyN
-        ~repeat:10
-        ~style:Nil
-        10L
-        [ "spec_false", (fun () -> run_false_spec number), ()
-        ; "just_false", (fun () -> run_false number), ()
-        ; "spec_true", (fun () -> run_true_spec number), ()
-        ; "just_true", (fun () -> run_true number), ()
-        ]
-    in
-    tabulate res)
+    [ "spec_false", (fun () -> run_false_spec number), ()
+    ; "false", (fun () -> run_false number), ()
+    ]
+    |> start
+    |> tabulate)
+;;
+
+let () =
+  let open OCanren in
+  numbers
+  |> List.iter (fun number ->
+    Printf.printf "number = %d \n" number;
+    [ "spec_true", (fun () -> run_true_spec number), ()
+    ; "true", (fun () -> run_true number), ()
+    ]
+    |> start
+    |> tabulate)
 ;;

@@ -88,65 +88,86 @@ and is_even_true n =
         (n === (!! (S (pred_n)))) &&& ((not_res === (!! false)) &&& (is_even_false pred_n))))
 
 ``` 
-### Benchmark 
+# Benchmark 
 The benchmark is presented below. The comparison was made using the [ocaml-benchmark](https://github.com/Chris00/ocaml-benchmarkgit) library. By `true` and `false`, we mean the execution of the original functions with the appropriate parameters. Under `spec_false` and `spec_true` --- specialized.
 
-| Answers: 10  |     Rate      | `false` | `true` | `spec_false` | `spec_true` |
-| ------------ | ------------- | ------- | ------ | ------------ | ----------- |
-| `false`      | 27596+- 205/s |   ---   |   -2%  |      -32%    |     -34%    |
-| `true`       | 28254+-1524/s |    2%   |   ---  |      -30%    |     -33%    |
-| `spec_false` | 40559+-2354/s |    47%  |    44% |      ---     |      -3%    |
-| `spec_true`  | 41860+- 249/s |    52%  |    48% |      3%      |      ---    |
+A large number is better. The percentage shows the gain of the execution of the function from the column on the left relative to the corresponding function in the upper row.
 
-| Answers: 100 |  Rate    | `false` | `true` | `spec_true` | `spec_false`|
-| ------------ | -------- | ------- | ------ | ----------- | ----------- |
-| `false`      | 512+-3/s |   ---   |   -8%  |      -27%   |     -28%    |
-| `true`       | 516+-2/s |    1%   |   ---  |      -27%   |     -27%    |
-| `spec_true`  | 705+-3/s |    38%  |    37% |      ---    |      0%    |
-| `spec_false` | 707+-3/s |    38%  |    37% |       0%    |      ---    |
+## Is_even
 
-| Answers: 1000 | Rate   | `false` | `true` | `spec_false` | `spec_true` |
-| ------------- | -----  | ------- | ------ | ------------ | ----------- |
-| `false`       | 4.73/s |   ---   |   -2%  |      -36%    |     -36%    |
-| `true`        | 4.85/s |    2%   |   ---  |      -34%    |     -34%    |
-| `spec_false`  | 7.33/s |    55%  |    51% |      ---     |      0%     |
-| `spec_true`   | 7.34/s |    55%  |    51% |       0%     |      ---    |
+#### False 
+|number = 10 |  Rate |  false | spec_false |
+| ---------- | ----- | ------- | ---------- |
+|     false | 25698+-1390/s     |    --   |    -46% |
+|spec_false | 47221+-1352/s  |      84%  |       -- |
+
+| number = 100 | Rate |  false| spec_false |
+| ------------- | ---- | ---- |---------- |
+|     false | 485+-1/s    |     --   |    -30% |
+| spec_false | 695+-4/s   |     43%  |       -- |
+
+
+| number = 1000   | Rate | false | spec_false |
+| --------------- | ---- | ----- | ----------|
+|     false |4.35+-0.00/s  |       -- |      -37% |
+|spec_false| 6.94+-0.07/s    |    59%     |    -- |
+
+#### True 
+
+|number = 10|  Rate | true | spec_true |
+| --------- | ----- | ---- | ---------- |
+|     true | 26872+- 529/s    |    --   |   -41% |
+| spec_true | 45772+-1258/s   |    70%   |     -- |
+
+| number = 100| Rate |  true | spec_true|
+| ----------- |------| ------| --------|
+ |    true|  486+-1/s   |     --   |   -29% |
+| spec_true | 688+-2/s   |    42%  |      --|
+
+| number = 1000 |  Rate | true | spec_true |
+| ------------- | ----- | ---- | --------- |
+|     true | 4.47+-0.01/s  |      --  |    -35% |
+|spec_true| 6.91+-0.01/s     |  55%    |    -- |
+
 
 The benchmark code is located [here](https://github.com/IgorErin/SpecialKanren/blob/master/tests/is_even/bench.ml).
 
 
-## A bit more sadness
+## Sub
 
-But for the subtraction ratio, things aren't so fun anymore. But still the version specialized by `None` sometimes wins.
+#### Some 
+|      count: 5    |   Rate          |  some  |spec_some |
+| ---------| ------------- | ----- | ------- |  
+|     some | 28543+- 554/s |       --   |  [-6%] |
+| spec_some | 30279+-3918/s |     [6%] |        -- |
 
-| Answers: 5          |   Rate   | `some` | `spec_some` | none | `spec_none` |
-| --------- | -------- | --------- | --------- | --------- | -------- |
-| `some` | 22321/s  |      ---   |   -22%    |  -56%     |   -69%    |
-| `spec_some` | 28653/s  |     28%   |     ---    |  -44%     | -60%      |
-| `none` | 51020/s  |   129%    |   78%     |   ---      | -29%      |
-| `spec_none` | 71429/s  |   220%    | 149%      |   40%     |   ---      |
+|     count: 25     |  Rate      |    some | spec_some |
+| ---------| -------    | -------- | ------- |
+|     some |1071+- 1/s |        -- |    [-4%] |
+| spec_some| 1113+-10/s |      [4%] |        --|
 
+|    count: 125      |  Rate    |  spec_some |     some  |
+| ---------- |------- | --------- | --------- |
+|spec_some |  13.6+-0.0/s|        --  |   [-0%]  |
+|     some | 13.7+-0.0/s |      [0%] |       -- |
 
-| Answers: 25          |  Rate   | just_some | spec_some | just_none | spec_none |
-| --------- | ----   |  -------  |  -------- | --------- | --------  |
-| `some` | 1066/s |    ---     |    -0%    |  -78%     |  -85%     |
-| `spec_some` | 1070/s |   0%      |    ---     | -77%      | -85%      |
-| `none` | 4753/s |   346%    |    344%   |     ---    |   -32%    |
-| `spec_none` | 6993/s |   556%    |    554%   |    47%    |     ---    |
+#### None
 
-| Answers: 125  | Rate   | `some` | `spec_some` | `none` | `spec_none` |
-| --------- | -------|  ------- | ------- | ------- | --------- |    
-| `some` | 13.3/s |       --- |      -5% |   -96% |     -96%  |
-| `spec_some` | 14.0/s |       5% |       --- |   -95% |     -95%  |
-| `none` | 304/s  |   2182%  |   2067%  |    ---  |     -1%   |
-| `spec_none` | 308/s  |   2212%  |   2095%  |   1%   |     ---    |
+|     count: 5     |   Rate       |     none | spec_none |
+| -------- | ------------ | --------- | -------- |
+|     none | 53668+-182/s |       -- |     -41%  |
+|spec_none | 91614+-930/s |      71% |       --  |
 
-| Answers: 625  |  Rate      |   `some` | `spec_some` | `spec_none` | `none` |
-| ----------| ---------- | --------- | --------- | --------- | --------- |          
-| `some` | 0.0954423/s|        --- |      -2%  |    -99%   |   -99%     |
-| `spec_some` | 0.0972737/s|        2% |       ---  |    -99%   |   -99%     |
-| `spec_none` |     10.9/s |   11313%  |  11098%   |     ---    |   -7%      |
-| `none` |     11.7/s |   12185%  |  11953%   |     8%    |    ---      |
+|  count: 25         | Rate      |    none | spec_none |
+| --------  | --------- | -------| -------- |
+|     none | 5598+-27/s   |     --   |   -24% |
+| spec_none | 7329+-85/s  |     31%  |      -- |
+
+|   count: 125  | Rate |  none| spec_none |
+| ------- | -------| -----| -------|
+ |    none |314+-0/s     |   --    |   -5%|
+| spec_none | 330+-0/s |        5% |      --|
+
 
 The benchmark code is located [here](https://github.com/IgorErin/SpecialKanren/blob/master/tests/sub/bench.ml).
 

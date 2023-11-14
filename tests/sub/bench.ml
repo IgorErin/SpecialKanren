@@ -43,20 +43,27 @@ let run_None_spec n =
   ()
 ;;
 
+let numbers = Base.List.init 3 ~f:(fun index -> Core.Int.pow 5 (Int.add index 1))
+let start = latencyN ~repeat:2 ~style:Nil 30L
+
 let () =
-  Base.List.init 4 ~f:(fun index -> Core.Int.pow 5 (Int.add index 1))
+  numbers
   |> List.iter (fun count ->
     Printf.printf "count: %d\n" count;
-    let res =
-      latencyN
-        ~repeat:1
-        ~style:Nil
-        10L
-        [ "spec_some", (fun () -> run_Some_spec count), ()
-        ; "just_some", (fun () -> run_Some count), ()
-        ; "spec_none", (fun () -> run_None_spec count), ()
-        ; "just_none", (fun () -> run_None count), ()
-        ]
-    in
-    tabulate res)
+    [ "spec_some", (fun () -> run_Some_spec count), ()
+    ; "some", (fun () -> run_Some count), ()
+    ]
+    |> start
+    |> tabulate)
+;;
+
+let () =
+  numbers
+  |> List.iter (fun count ->
+    Printf.printf "count: %d\n" count;
+    [ "spec_none", (fun () -> run_None_spec count), ()
+    ; "none", (fun () -> run_None count), ()
+    ]
+    |> start
+    |> tabulate)
 ;;
