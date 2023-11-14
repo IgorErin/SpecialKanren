@@ -16,5 +16,19 @@
  (libraries GT OCanren)
  (modules src run target))
 
+(rule
+ (targets target_bench.ml)
+ (deps
+  (:exec %{project_root}/bin/main.exe)
+  (:input src.ml))
+ (action
+  (run sh -c "%{exec} -ml -par z -fname sub -o %{targets} %{input}")))
+
+(executable
+ (public_name sub_bench)
+ (name bench)
+ (libraries GT core OCanren benchmark)
+ (modules target_bench bench))
+
 (cram
  (deps target.ml ./run.exe src.ml))

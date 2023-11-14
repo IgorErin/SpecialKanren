@@ -14,7 +14,21 @@
 (executable
  (name run)
  (libraries GT OCanren)
- (modules src run target))
+ (modules run target))
+
+(rule
+ (targets target_bench.ml)
+ (deps
+  (:exec %{project_root}/bin/main.exe)
+  (:input src.ml))
+ (action
+  (run sh -c "%{exec} -ml -par res -fname is_even -o %{targets} %{input}")))
+
+(executable
+ (public_name is_even_bench)
+ (name bench)
+ (libraries GT core OCanren benchmark)
+ (modules target_bench bench))
 
 (cram
  (deps target.ml ./run.exe src.ml))

@@ -49,5 +49,4 @@
             l
             === !!(Cons (x, xs))
             &&& (pred x !!true &&& (pred_res === !!true &&& for_allo_true pred xs)))
-
 but doesnt work for l and pred TODO()
