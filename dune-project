@@ -18,6 +18,7 @@
  (synopsis "Relational program specializer")
  (depends 
    dune
+   benchmark
   core
   (ocaml (>= "4.14"))
   ocamlfind
