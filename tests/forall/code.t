@@ -44,4 +44,4 @@
     l === !!Nil
     ||| Fresh.two (fun x xs ->
             l === !!(Cons (x, xs)) &&& (pred x !!true &&& for_allo_true pred xs))
-but doesnt work for l and pred TODO()
+TODO(l)

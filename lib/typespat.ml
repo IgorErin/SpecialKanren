@@ -5,6 +5,9 @@ let skip_ilogic expt =
   let open Ocanren_patterns in
   match get_desc expt with
   | Tconstr (path, [ x ], _) when is_ilogic path -> x
+  | Tconstr (path, _, _) ->
+    let m = Printf.sprintf "Expected ilogic, path:%s" @@ Path.name path in
+    raise @@ Type_mismatch m
   | _ -> raise @@ Type_mismatch "Seems like you want to specialize a ilogic parameter"
 ;;
 
@@ -40,7 +43,8 @@ let desc_of_exp env type_exp =
   |> path_of_constr
   |> look env
   |> get_variants
-  |> List.map (fun { cd_id; _ } -> Env.find_ident_constructor cd_id env)
+  |> List.map (fun { cd_id; _ } ->
+    Env.find_ident_constructor cd_id env)
 ;;
 
 let get_cons type_exp env = skip_ilogic type_exp |> desc_of_exp env

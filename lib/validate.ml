@@ -17,7 +17,7 @@ let ident_of_vb vb =
   | _ -> raise @@ Not_implemented "Only var pattern in value binding supported"
 ;;
 
-let parameter_check parp str =
+let parameter_check parp env str =
   let rec loop count exp =
     let open Typedtree in
     match exp.exp_desc with
@@ -25,7 +25,7 @@ let parameter_check parp str =
       if parp param
       then (
         let parp = Predicate.par_of_ident param count in
-        let variants = Typespat.get_cons c_lhs.pat_type c_lhs.pat_env in
+        let variants = Typespat.get_cons c_lhs.pat_type env in
         Some (parp, variants))
       else loop (count + 1) c_rhs
     | Texp_function _ -> raise @@ Not_implemented "Only one case functions supported"
@@ -47,7 +47,7 @@ let function_check funp parp (t : Typedtree.structure) =
      | [ vb ] ->
        let ident = ident_of_vb vb in
        let funp = Predicate.fun_of_ident ident in
-       parameter_check parp vb.vb_expr
+       parameter_check parp t.str_final_env vb.vb_expr
        |> (function
        | Some (parp, variants) -> vb.vb_expr, funp, parp, variants
        | None -> raise Par_not_found)

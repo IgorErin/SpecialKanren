@@ -28,7 +28,14 @@ let nunify = Gen.(exp_texp_of_path [ str "OCanren"; str "=/=" ])
 let conj = Gen.(exp_texp_of_path [ str "OCanren"; str "&&&" ])
 let disj = Gen.(exp_texp_of_path [ str "OCanren"; str "|||" ])
 let list_cons = Gen.(exp_by_constr_ident @@ str "::") (* check type.*)
-let ilogic = Gen.(PathPat.match' @@ list [ str "OCanren__"; str "Logic"; str "ilogic" ])
+
+let ilogic =
+  Gen.(
+    let fst = PathPat.match' @@ list [ str "OCanren__"; str "Logic"; str "ilogic" ] in
+    let snd = PathPat.match' @@ list [ str "OCanren"; str "ilogic" ] in
+    fst <|> snd)
+;;
+
 let inj = Gen.(exp_texp_of_path [ str "OCanren"; str "!!" ])
 
 (* TODO fresh one, two etc *)

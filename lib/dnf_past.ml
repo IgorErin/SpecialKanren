@@ -148,14 +148,18 @@ let past_of_conj conj =
     | DFresh vars -> Prim.fresh_closer vars next
   in
   match List.rev conj with
-  | [] -> Prim.reduced
+  | [] -> failwith "Empty conj in ast generation"
   | hd :: tl ->
     let hd = to_past_one hd in
     List.fold_right to_past_regular (List.rev tl) hd
 ;;
 
 let past_of_dnf dnf =
-  List.map past_of_conj dnf |> Prim.create_disj |> Core.Option.value ~default:Prim.reduced
+  dnf
+  |> List.filter (fun x -> not @@ Core.List.is_empty x)
+  |> List.map past_of_conj
+  |> Prim.create_disj
+  |> Core.Option.value ~default:Prim.reduced
 ;;
 
 let create_var source_info =
