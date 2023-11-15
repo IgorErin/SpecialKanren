@@ -72,3 +72,6 @@ let constr_get_opt = function
   | Constr (desc, values) -> Some (desc, values)
   | _ -> None
 ;;
+
+let constr ((desc, values) : const) = Constr (desc, values)
+let var x = Var x
