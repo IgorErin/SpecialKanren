@@ -65,21 +65,25 @@ let () =
   let parp = Predicate.par_of_string par in
   let funp = Predicate.fun_of_string fname in
   let ff = Config.ff () in
-  let items =
-    match ff with
-    | Ml ->
-      let str = read_ml path in
-      SpecialKanren.Outer.translate funp parp str
-    | Cmt ->
-      let str = read_cmt path in
-      SpecialKanren.Outer.translate funp parp str
-  in
-  match out with
-  | Some output_name ->
-    let ch = open_out output_name in
-    let fmt = Format.formatter_of_out_channel ch in
-    Format.pp_set_margin fmt 180;
-    Pprintast.structure fmt items;
-    Format.fprintf fmt "%!"
-  | None -> Pprintast.structure Format.std_formatter items
+  try
+    let items =
+      match ff with
+      | Ml ->
+        let str = read_ml path in
+        SpecialKanren.Outer.translate funp parp str
+      | Cmt ->
+        let str = read_cmt path in
+        SpecialKanren.Outer.translate funp parp str
+    in
+    match out with
+    | Some output_name ->
+      let ch = open_out output_name in
+      let fmt = Format.formatter_of_out_channel ch in
+      Format.pp_set_margin fmt 180;
+      Pprintast.structure fmt items;
+      Format.fprintf fmt "%!"
+    | None -> Pprintast.structure Format.std_formatter items
+  with
+  | SpecialKanren.Sexn.Error { region; message } ->
+    Format.eprintf "Fatal error in %s with %s" (SpecialKanren.Sexn.show region) @@ message
 ;;

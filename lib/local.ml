@@ -235,6 +235,20 @@ let run_per_const par const const_vars dnf =
   dnf
 ;;
 
+let fuse_fresh conj =
+  conj
+  |> List.fold_left
+       (fun (facc, dacc) -> function
+         | DFresh freshs -> List.rev freshs @ facc, dacc
+         | x ->
+           if Core.List.is_empty facc
+           then [], x :: dacc
+           else [], [ x; DFresh (List.rev facc) ] @ dacc)
+       ([], [])
+  |> snd
+  |> List.rev
+;;
+
 let run ~info ~freshs ~globals ~dnf =
   let new_var = Utils.mk_new_var_fun (globals @ freshs) in
   let dnf = dnf |> List.map Passes.reduce_const_const |> List.filter_map (fun x -> x) in
@@ -252,6 +266,7 @@ let run ~info ~freshs ~globals ~dnf =
       consts_info
     |> List.map Reduce.try_reduce
     |> List.map Reduce.remove_empty_fresh
+    |> List.map fuse_fresh
   in
   let globals =
     globals

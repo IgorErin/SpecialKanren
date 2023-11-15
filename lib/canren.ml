@@ -9,6 +9,9 @@ type ('a, 'b) canren =
   | Disj of ('a, 'b) canren * ('a, 'b) canren
   | Conj of ('a, 'b) canren * ('a, 'b) canren
 
+let disj fst snd = Disj (fst, snd)
+let conj fst snd = Conj (fst, snd)
+
 module Utils = struct
   let eprint_texp exp =
     let ut = Untypeast.untype_expression exp in
@@ -50,7 +53,7 @@ module Utils = struct
       | Texp_function _ -> Sexn.canren "Unexpected nontrivial branching"
       | _ -> exp, acc
     in
-    loop [] exp
+    loop [] exp |> fun (exp, acc) -> exp, List.rev acc
   ;;
 
   let skip_unit_par exp =
@@ -97,15 +100,15 @@ type op =
   | Cj
   | Undef
 
-let get_const = function
-  | Dj -> fun fst snd -> Disj (fst, snd)
-  | Cj -> fun fst snd -> Conj (fst, snd)
+let map_oper = function
+  | Dj -> disj
+  | Cj -> conj
   | Undef -> Sexn.canren "Unexpected nontrivial branching"
 ;;
 
 let of_tast exp =
   let open Typedtree in
-  let rec outer _ (vars : Ident.t list) exp =
+  let rec outer op (vars : Ident.t list) exp =
     let rec loop (vars : Ident.t list) exp =
       match exp.exp_desc with
       | Texp_function _ ->
@@ -114,17 +117,17 @@ let of_tast exp =
       (* conde *)
       | Texp_apply (hd_exp, args) when is_conde hd_exp ->
         let e = Assert.un_arg args in
-        outer Cj vars e
+        outer Dj vars e
       (* ?& *)
       | Texp_apply (hd_exp, args) when is_ande hd_exp ->
         let e = Assert.un_arg args in
-        outer Dj vars e
+        outer Cj vars e
       (* (::) list cons. assume disj *)
       | Texp_construct (_, _, args) when is_list_cons exp ->
         let fst, snd = Assert.bin args in
         let fst = loop vars fst in
         let snd = loop vars snd in
-        Core.Option.merge fst snd ~f:(fun fst snd -> Disj (fst, snd))
+        Core.Option.merge fst snd ~f:(map_oper op)
       (* (|||) disj *)
       | Texp_apply (hd_exp, args) when is_disj hd_exp ->
         let fexp, sexp = Assert.bin_args args in
@@ -155,7 +158,7 @@ let of_tast exp =
         let e = Assert.un_arg args in
         let exp, new_fresh = Utils.get_params e in
         let vars = vars @ new_fresh in
-        Option.map (fun x -> Fresh (List.rev new_fresh, x)) @@ loop vars exp
+        Option.map (fun x -> Fresh (new_fresh, x)) @@ loop vars exp
       | Texp_apply (hd_exp, args) ->
         let args = Assert.args args in
         let args = List.map (Utils.get_value vars) args in
@@ -167,7 +170,6 @@ let of_tast exp =
     loop vars exp
   in
   let body, global = Utils.get_params exp in
-  let global = List.rev global in
   global, outer Undef global body
 ;;
 
