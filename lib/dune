@@ -1,6 +1,7 @@
 (library
  (libraries base core compiler-libs.common OCanren)
  (modules
+  Sexn
   Assert
   Local
   Patterns

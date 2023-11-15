@@ -1,14 +1,11 @@
-exception Type_mismatch of string
-
 let skip_ilogic expt =
   let open Types in
   let open Ocanren_patterns in
   match get_desc expt with
   | Tconstr (path, [ x ], _) when is_ilogic path -> x
   | Tconstr (path, _, _) ->
-    let m = Printf.sprintf "Expected ilogic, path:%s" @@ Path.name path in
-    raise @@ Type_mismatch m
-  | _ -> raise @@ Type_mismatch "Seems like you want to specialize a ilogic parameter"
+    Sexn.typespat @@ Printf.sprintf "Expected ilogic, path:%s" @@ Path.name path
+  | _ -> Sexn.typespat "Seems like you want to specialize a ilogic parameter"
 ;;
 
 let path_of_constr texp =
@@ -16,7 +13,7 @@ let path_of_constr texp =
   let desc = get_desc texp in
   match desc with
   | Tconstr (path, _, _) -> path
-  | _ -> raise @@ Type_mismatch "Constructor expected."
+  | _ -> Sexn.typespat "Constructor expected."
 ;;
 
 let look env path = Env.find_type path env
@@ -43,8 +40,7 @@ let desc_of_exp env type_exp =
   |> path_of_constr
   |> look env
   |> get_variants
-  |> List.map (fun { cd_id; _ } ->
-    Env.find_ident_constructor cd_id env)
+  |> List.map (fun { cd_id; _ } -> Env.find_ident_constructor cd_id env)
 ;;
 
 let get_cons type_exp env = skip_ilogic type_exp |> desc_of_exp env

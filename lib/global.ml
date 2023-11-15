@@ -1,12 +1,6 @@
 open Dnf
 open Value
 
-type error = Unnamed of string
-
-exception Error of error
-
-let error e = raise @@ Error e
-
 type fun_hole = (string * Value.t list) option
 type spec_info = (int * Types.constructor_description) list
 

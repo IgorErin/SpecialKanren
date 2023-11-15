@@ -1,10 +1,6 @@
 open Ocanren_patterns
 open Value
 
-type error = Unexpected_ast_structure of string
-
-exception Error of error
-
 type ('a, 'b) canren =
   | Call of Path.t * Value.t list
   | Fresh of Ident.t list * ('a, 'b) canren
@@ -13,15 +9,18 @@ type ('a, 'b) canren =
   | Disj of ('a, 'b) canren * ('a, 'b) canren
   | Conj of ('a, 'b) canren * ('a, 'b) canren
 
-let error e = raise @@ Error e
-
 module Utils = struct
+  let eprint_texp exp =
+    let ut = Untypeast.untype_expression exp in
+    Pprintast.expression Format.err_formatter ut
+  ;;
+
   let get_path exp =
     let open Typedtree in
     exp.exp_desc
     |> function
     | Texp_ident (path, _, _) -> path
-    | _ -> error @@ Unexpected_ast_structure "Path expected"
+    | _ -> Sexn.canren "Path expected"
   ;;
 
   let get_value vars exp =
@@ -35,8 +34,10 @@ module Utils = struct
       | Texp_apply (hd, args) when Ocanren_patterns.is_inj hd ->
         let arg = Assert.un_arg args in
         loop arg
-      | Texp_ident _ -> error @@ Unexpected_ast_structure "Seems like dot ident in values"
-      | _ -> error @@ Unexpected_ast_structure "Value expected"
+      | Texp_ident _ -> Sexn.canren "Seems like dot ident in values"
+      | _ ->
+        eprint_texp exp;
+        Sexn.canren "Value expected"
     in
     loop exp
   ;;
@@ -46,11 +47,17 @@ module Utils = struct
     let rec loop acc exp =
       match exp.exp_desc with
       | Texp_function { param; cases = [ { c_rhs; _ } ]; _ } -> loop (param :: acc) c_rhs
-      | Texp_function _ ->
-        error @@ Unexpected_ast_structure "Unexpected nontrivial branching"
+      | Texp_function _ -> Sexn.canren "Unexpected nontrivial branching"
       | _ -> exp, acc
     in
     loop [] exp
+  ;;
+
+  let skip_unit_par exp =
+    let open Typedtree in
+    match exp.exp_desc with
+    | Texp_function { cases = [ { c_rhs; _ } ]; _ } -> c_rhs
+    | _ -> failwith ""
   ;;
 end
 
@@ -85,61 +92,83 @@ let rec pp f pfst psnd = function
     pp f pfst psnd snd
 ;;
 
+type op =
+  | Dj
+  | Cj
+  | Undef
+
+let get_const = function
+  | Dj -> fun fst snd -> Disj (fst, snd)
+  | Cj -> fun fst snd -> Conj (fst, snd)
+  | Undef -> Sexn.canren "Unexpected nontrivial branching"
+;;
+
 let of_tast exp =
   let open Typedtree in
-  let rec loop (vars : Ident.t list) exp =
-    match exp.exp_desc with
-    | Texp_function _ -> error @@ Unexpected_ast_structure "Assumed no functions."
-    | Texp_apply (hd_exp, args) when is_conde hd_exp ->
-      let e = Assert.un_arg args in
-      loop vars e
-    (* (::) list cons. assume disj *)
-    | Texp_construct (_, _, args) when is_list_cons exp ->
-      let fst, snd = Assert.bin args in
-      let fst = loop vars fst in
-      let snd = loop vars snd in
-      Core.Option.merge fst snd ~f:(fun fst snd -> Disj (fst, snd))
-    (* (|||) disj *)
-    | Texp_apply (hd_exp, args) when is_disj hd_exp ->
-      let fexp, sexp = Assert.bin_args args in
-      let fexp = loop vars fexp in
-      let sexp = loop vars sexp in
-      Core.Option.merge fexp sexp ~f:(fun fexp sexp -> Disj (fexp, sexp))
-      (* (&&&) conj *)
-    | Texp_apply (hd_exp, args) when is_conj hd_exp ->
-      let fexp, sexp = Assert.bin_args args in
-      let fexp = loop vars fexp in
-      let sexp = loop vars sexp in
-      Core.Option.merge fexp sexp ~f:(fun fexp sexp -> Conj (fexp, sexp))
-    (* === *)
-    | Texp_apply (hd_exp, args) when is_unify hd_exp ->
-      let fexp, sexp = Assert.bin_args args in
-      let fst = Utils.get_value vars fexp in
-      let snd = Utils.get_value vars sexp in
-      Option.some (Unify (fst, snd))
-    (* =/= *)
-    | Texp_apply (hd_exp, args) when is_nunify hd_exp ->
-      let fexp, sexp = Assert.bin_args args in
-      let fst = Utils.get_value vars fexp in
-      let snd = Utils.get_value vars sexp in
-      Option.some (Disunify (fst, snd))
-      (* fresh *)
-    | Texp_apply (hd, args) when is_fresh hd ->
-      let e = Assert.un_arg args in
-      let exp, new_fresh = Utils.get_params e in
-      let vars = vars @ new_fresh in
-      Option.map (fun x -> Fresh (List.rev new_fresh, x)) @@ loop vars exp
-    | Texp_apply (hd_exp, args) ->
-      let args = Assert.args args in
-      let args = List.map (Utils.get_value vars) args in
-      let ident = Utils.get_path hd_exp in
-      Call (ident, args) |> Option.some
-    (* paramter -> variant *)
-    | _ -> None (* hack to hold :: in conde. rework *)
+  let rec outer _ (vars : Ident.t list) exp =
+    let rec loop (vars : Ident.t list) exp =
+      match exp.exp_desc with
+      | Texp_function _ ->
+        Utils.eprint_texp exp;
+        Sexn.canren "Assumed no functions."
+      (* conde *)
+      | Texp_apply (hd_exp, args) when is_conde hd_exp ->
+        let e = Assert.un_arg args in
+        outer Cj vars e
+      (* ?& *)
+      | Texp_apply (hd_exp, args) when is_ande hd_exp ->
+        let e = Assert.un_arg args in
+        outer Dj vars e
+      (* (::) list cons. assume disj *)
+      | Texp_construct (_, _, args) when is_list_cons exp ->
+        let fst, snd = Assert.bin args in
+        let fst = loop vars fst in
+        let snd = loop vars snd in
+        Core.Option.merge fst snd ~f:(fun fst snd -> Disj (fst, snd))
+      (* (|||) disj *)
+      | Texp_apply (hd_exp, args) when is_disj hd_exp ->
+        let fexp, sexp = Assert.bin_args args in
+        let fexp = loop vars fexp in
+        let sexp = loop vars sexp in
+        Core.Option.merge fexp sexp ~f:(fun fexp sexp -> Disj (fexp, sexp))
+        (* (&&&) conj *)
+      | Texp_apply (hd_exp, args) when is_conj hd_exp ->
+        let fexp, sexp = Assert.bin_args args in
+        let fexp = loop vars fexp in
+        let sexp = loop vars sexp in
+        Core.Option.merge fexp sexp ~f:(fun fexp sexp -> Conj (fexp, sexp))
+      (* === *)
+      | Texp_apply (hd_exp, args) when is_unify hd_exp ->
+        let fexp, sexp = Assert.bin_args args in
+        let fst = Utils.get_value vars fexp in
+        let snd = Utils.get_value vars sexp in
+        Option.some (Unify (fst, snd))
+      (* =/= *)
+      | Texp_apply (hd_exp, args) when is_nunify hd_exp ->
+        let fexp, sexp = Assert.bin_args args in
+        let fst = Utils.get_value vars fexp in
+        let snd = Utils.get_value vars sexp in
+        Option.some (Disunify (fst, snd))
+      | Texp_apply (hd, args) when is_delay hd ->
+        loop vars @@ Utils.skip_unit_par @@ Assert.un_arg args (* fresh *)
+      | Texp_apply (hd, args) when is_fresh hd ->
+        let e = Assert.un_arg args in
+        let exp, new_fresh = Utils.get_params e in
+        let vars = vars @ new_fresh in
+        Option.map (fun x -> Fresh (List.rev new_fresh, x)) @@ loop vars exp
+      | Texp_apply (hd_exp, args) ->
+        let args = Assert.args args in
+        let args = List.map (Utils.get_value vars) args in
+        let ident = Utils.get_path hd_exp in
+        Call (ident, args) |> Option.some
+      (* paramter -> variant *)
+      | _ -> None (* hack to hold :: in conde. rework *)
+    in
+    loop vars exp
   in
   let body, global = Utils.get_params exp in
   let global = List.rev global in
-  global, loop global body
+  global, outer Undef global body
 ;;
 
 let get_declared_fresh_vars e =

@@ -37,10 +37,13 @@ let ilogic =
 ;;
 
 let inj = Gen.(exp_texp_of_path [ str "OCanren"; str "!!" ])
+let delay = Gen.(exp_texp_of_path [ str "OCanren"; str "delay" ])
+(*TODO unit patter patter *)
 
 (* TODO fresh one, two etc *)
 let fresh = Gen.(exp_texp_of_path [ str "OCanren"; str "Fresh"; drop ])
 let is_conde = parse_bool (exp_texp_of_path Gen.[ str "OCanren"; str "conde" ])
+let is_ande = parse_bool (exp_texp_of_path Gen.[ str "OCanren"; str "?&" ])
 let is_conj = parse_bool conj
 let is_disj = parse_bool disj
 let is_list_cons = parse_bool list_cons
@@ -49,3 +52,4 @@ let is_nunify = parse_bool nunify
 let is_fresh = parse_bool fresh
 let is_ilogic = parse_bool ilogic
 let is_inj = parse_bool inj
+let is_delay = parse_bool delay

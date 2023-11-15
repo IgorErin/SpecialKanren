@@ -6,14 +6,6 @@ type ('a, 'b) raw_fun =
   ; out_body : ('a, 'b) Canren.canren
   }
 
-type error =
-  | Str_item_not_found of string
-  | Type_mismatch
-
-exception Error of error
-
-let error e = raise @@ Error e
-
 let get_funs str =
   str.str_items
   |> List.filter_map (fun str ->
@@ -37,7 +29,7 @@ let find funs ident =
   funs
   |> List.find_opt (fun { out_name; _ } -> Ident.same ident out_name)
   |> Core.Option.value_or_thunk ~default:(fun () ->
-    error (Str_item_not_found (Ident.name ident)))
+    Sexn.outer @@ Printf.sprintf "not found: %s" (Ident.name ident))
   |> fun { out_globals; out_body; _ } -> out_globals, out_body
 ;;
 
@@ -45,7 +37,7 @@ let info_of_consts env globals consts =
   consts
   |> List.map (fun (number, (const_desc : Types.constructor_description)) ->
     List.nth_opt globals number
-    |> Core.Option.value_or_thunk ~default:(fun () -> error Type_mismatch)
+    |> Core.Option.value_or_thunk ~default:(fun () -> Sexn.outer "Type_mismatch")
     |> fun ident ->
     let parp = Predicate.par_of_ident ident number in
     let varp =
