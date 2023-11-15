@@ -72,19 +72,19 @@
                     &&& add y z_value x);
               ])
   
-  let rec loe_false x y =
-    Fresh.one (fun pred_x -> x === !!(S pred_x) &&& (y === !!O))
-    ||| Fresh.one (fun pred_x ->
-            x === !!(S pred_x)
-            &&& Fresh.one (fun pred_y ->
-                    y === !!(S pred_y) &&& loe_false pred_x pred_y))
-  
-  and loe_true x y =
+  let rec loe_true x y =
     x === !!O
     ||| Fresh.one (fun pred_x ->
             x === !!(S pred_x)
             &&& Fresh.one (fun pred_y ->
                     y === !!(S pred_y) &&& loe_true pred_x pred_y))
+  
+  and loe_false x y =
+    Fresh.one (fun pred_x -> x === !!(S pred_x) &&& (y === !!O))
+    ||| Fresh.one (fun pred_x ->
+            x === !!(S pred_x)
+            &&& Fresh.one (fun pred_y ->
+                    y === !!(S pred_y) &&& loe_false pred_x pred_y))
   
   and sub_None x y = loe_false y x
   

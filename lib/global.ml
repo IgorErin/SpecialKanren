@@ -126,25 +126,38 @@ let closer step source =
   let set_call_self { href; hfinfo; hargs; _ } =
     href := Some (create_name hfinfo, hargs)
   in
+  let try_set acc hole =
+    List.find_opt (fun item -> equal hole.hfinfo item.res_info) acc
+    |> function
+    | Some _ ->
+      set_call_self hole;
+      None
+    | _ -> Some hole
+  in
   let filter acc deps =
-    deps
-    |> List.filter_map (fun (hole : hole_info) ->
-      List.find_opt (fun item -> equal hole.hfinfo item.res_info) acc
-      |> function
-      | Some _ ->
-        set_call_self hole;
-        None
-      | _ -> Some hole)
+    deps |> List.filter_map (fun (hole : hole_info) -> try_set acc hole)
   in
   let rec loop acc deps =
     let deps = filter acc deps in
-    let front = List.map (fun hole -> step hole.hfinfo) deps in
-    let deps = List.concat_map (fun res -> res.res_deps) front @ deps |> filter acc in
-    let acc = front @ acc in
+    let acc, deps =
+      List.fold_left
+        (fun (items, deps) new_dep ->
+          let new_items =
+            new_dep
+            |> try_set items
+            |> Option.to_list
+            |> List.map (fun h -> step h.hfinfo)
+          in
+          let new_deps = new_items |> List.concat_map (fun res -> res.res_deps) in
+          new_items @ items, new_deps @ deps)
+        (acc, deps)
+        deps
+    in
+    let deps = filter acc deps in
     if Core.List.is_empty deps then acc else loop acc deps
   in
   let init = List.map step source in
-  let deps = init |> List.concat_map (fun { res_deps; _ } -> res_deps) |> filter init in
+  let deps = init |> List.concat_map (fun res -> res.res_deps) in
   loop init deps
 ;;
 

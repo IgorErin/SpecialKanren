@@ -37,8 +37,8 @@
         Fresh.one (fun x -> spec !!false !!false !!(Some x)) &&& (is === !!false);
       ]
   
-  let rec spec_true_true_None = failwith "Reduced"
-  and spec_false_false_Some some_arg_0 = Fresh.one (fun x -> some_arg_0 === x)
+  let rec spec_false_false_Some some_arg_0 = Fresh.one (fun x -> some_arg_0 === x)
+  and spec_true_true_None = failwith "Reduced"
   
   and rel_false =
     spec_true_true_None ||| Fresh.one (fun x -> spec_false_false_Some x)
