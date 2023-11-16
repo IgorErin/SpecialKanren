@@ -89,7 +89,7 @@ module Prim = struct
       Exp.construct lid arg
     and inside_constr = function
       | Var ident -> lid_of_ident ident |> Exp.ident
-      | Constr (desc, values) -> create_const desc values
+      | Constr (desc, values) -> create_const desc values |> create_inj
     and loop value =
       match value with
       | Var ident -> lid_of_ident ident |> Exp.ident
