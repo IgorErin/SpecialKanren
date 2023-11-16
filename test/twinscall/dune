@@ -1,0 +1,24 @@
+(env
+ (_
+  (flags
+   (:standard -rectypes -w -27-33-32-39))))
+
+(rule
+ (deps
+  (:exec %{project_root}/bin/main.exe)
+  %{cmo:../../samples/twinscall})
+ (target target.ml)
+ (action
+  (run
+   sh
+   -c
+   "%{exec} -cmt -par is -fname twins -o %{target} ../../samples/.Samples.objs/byte/twinscall.cmt")))
+
+(executable
+ (name target)
+ (libraries GT OCanren)
+ (modules target))
+
+(cram
+ (deps
+  (package SpecialKanren)))

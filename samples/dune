@@ -1,0 +1,30 @@
+(env
+ (_
+  (flags
+   (:standard -rectypes -w -27-33-32-39))))
+
+(library
+ (name Samples)
+ (wrapped false)
+ (libraries GT OCanren)
+ (preprocess
+  (pps
+   OCanren-ppx.ppx_repr
+   OCanren-ppx.ppx_fresh
+   OCanren-ppx.ppx_distrib
+   -new-typenames
+   GT.ppx_all))
+ (modules
+  forall
+  GCW
+  hd
+  id_external
+  is_even
+  is_none
+  is_zero
+  le
+  multiarg
+  self_call
+  sub
+  twinscall
+  value))

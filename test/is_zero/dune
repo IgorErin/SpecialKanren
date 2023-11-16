@@ -1,0 +1,25 @@
+(env
+ (_
+  (flags
+   (:standard -rectypes -w -27-33-32-39))))
+
+(rule
+ (deps
+  (:exec %{project_root}/bin/main.exe)
+  %{cmo:../../samples/is_zero})
+ (target target.ml)
+ (action
+  (run
+   sh
+   -c
+   "%{exec} -cmt -par is -fname is_zero -o %{target} ../../samples/.Samples.objs/byte/is_zero.cmt")))
+
+(executable
+ (name run)
+ (libraries GT OCanren)
+ (modules run target))
+
+(cram
+ (deps
+  ./run.exe
+  (package SpecialKanren)))

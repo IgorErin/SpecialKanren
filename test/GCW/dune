@@ -1,0 +1,23 @@
+(env
+ (_
+  (flags
+   (:standard -rectypes -w -27-33-32-39))))
+
+(rule
+ (deps
+  (:exec %{project_root}/bin/main.exe)
+  %{cmo:../../samples/GCW})
+ (target target.ml)
+ (action
+  (run
+   sh
+   -c
+   "%{exec} -cmt -par q1 -fname checkAnswer -o %{target} ../../samples/.Samples.objs/byte/gCW.cmt")))
+
+(executable
+ (name run)
+ (libraries GT OCanren)
+ (modules run target))
+
+(cram
+ (deps target.ml))

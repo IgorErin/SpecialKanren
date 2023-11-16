@@ -1,0 +1,43 @@
+(env
+ (_
+  (flags
+   (:standard -rectypes -w -27-33-32-39))))
+
+(rule
+ (deps
+  (:exec %{project_root}/bin/main.exe)
+  %{cmo:../../samples/is_even})
+ (target target.ml)
+ (action
+  (run
+   sh
+   -c
+   "%{exec} -cmt -par res -fname is_even -o %{target} ../../samples/.Samples.objs/byte/is_even.cmt")))
+
+(executable
+ (name run)
+ (libraries GT OCanren)
+ (modules run target))
+
+(rule
+ (deps
+  (:exec %{project_root}/bin/main.exe)
+  %{cmo:../../samples/is_even})
+ (target target_bench.ml)
+ (action
+  (run
+   sh
+   -c
+   "%{exec} -cmt -par res -fname is_even -o %{target} ../../samples/.Samples.objs/byte/is_even.cmt")))
+
+(executable
+ (public_name is_even_bench)
+ (name bench)
+ (libraries GT OCanren core benchmark)
+ (modules bench target_bench))
+
+(cram
+ (deps
+  target.ml
+  ./run.exe
+  (package SpecialKanren)))
