@@ -1,0 +1,37 @@
+(env
+ (_
+  (flags
+   (:standard -rectypes -w -27-33-32-39-34))))
+
+(rule
+ (deps
+  (:exec %{project_root}/bin/main.exe)
+  %{cmo:../../samples/bridge})
+ (target target.ml)
+ (mode
+  (promote (until-clean)))
+ (action
+  (progn
+   (run
+    sh
+    -c
+    "%{exec} -cmt -par q1 -fname getAnswer -o %{target} ../../samples/.Samples.objs/byte/bridge.cmt")
+   (run
+    sh
+    -c
+    "ocamlformat --enable-outside-detected-project -o %{target} ./%{target} "))))
+
+(executable
+ (name run)
+ (libraries GT OCanren OCanren.tester)
+ (modules run target)
+ (preprocess
+  (pps
+   OCanren-ppx.ppx_repr
+   OCanren-ppx.ppx_fresh
+   OCanren-ppx.ppx_distrib
+   -new-typenames
+   GT.ppx_all)))
+
+(cram
+ (deps run.exe target.ml))

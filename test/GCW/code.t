@@ -761,26 +761,24 @@
   and checkAnswerInner_St_false a state constarg0 constarg1 constarg2 constarg3 =
     conde
       [ a === !!Nil &&& (state =/= !!(St (constarg0, constarg1, constarg2, constarg3)))
-      ; Fresh.two (fun x xs ->
+      ; Fresh.three (fun x xs newState ->
           a
           === !!(Cons (x, xs))
           &&& (checkStep_true state x
-               &&& Fresh.one (fun newState ->
-                 step state x newState
-                 &&& (checkState_true newState
-                      &&& checkAnswerInner_St_false
-                            xs
-                            newState
-                            constarg0
-                            constarg1
-                            constarg2
-                            constarg3))))
-      ; Fresh.two (fun x xs ->
+               &&& (step state x newState
+                    &&& (checkState_true newState
+                         &&& checkAnswerInner_St_false
+                               xs
+                               newState
+                               constarg0
+                               constarg1
+                               constarg2
+                               constarg3))))
+      ; Fresh.three (fun x xs newState ->
           a
           === !!(Cons (x, xs))
           &&& (checkStep_true state x
-               &&& Fresh.one (fun newState ->
-                 step state x newState &&& checkState_false newState)))
+               &&& (step state x newState &&& checkState_false newState)))
       ; Fresh.two (fun x xs -> a === !!(Cons (x, xs)) &&& checkStep_false state x)
       ]
   
@@ -788,20 +786,19 @@
     a
     === !!Nil
     &&& (state === !!(St (constarg0, constarg1, constarg2, constarg3)))
-    ||| Fresh.two (fun x xs ->
+    ||| Fresh.three (fun x xs newState ->
       a
       === !!(Cons (x, xs))
       &&& (checkStep_true state x
-           &&& Fresh.one (fun newState ->
-             step state x newState
-             &&& (checkState_true newState
-                  &&& checkAnswerInner_St_true
-                        xs
-                        newState
-                        constarg0
-                        constarg1
-                        constarg2
-                        constarg3))))
+           &&& (step state x newState
+                &&& (checkState_true newState
+                     &&& checkAnswerInner_St_true
+                           xs
+                           newState
+                           constarg0
+                           constarg1
+                           constarg2
+                           constarg3))))
   
   and checkState_true s =
     Fresh.four (fun i0 g0 c0 w0 -> s === !!(St (i0, g0, c0, w0)) &&& (i0 === g0))
@@ -904,20 +901,19 @@
          &&& (constarg5
               === constarg1
               &&& (constarg6 === constarg2 &&& (constarg7 === constarg3))))
-    ||| Fresh.two (fun x xs ->
+    ||| Fresh.three (fun x xs newState ->
       a
       === !!(Cons (x, xs))
       &&& (checkStep_St_true constarg0 constarg1 constarg2 constarg3 x
-           &&& Fresh.one (fun newState ->
-             step_St constarg0 constarg1 constarg2 constarg3 x newState
-             &&& (checkState_true newState
-                  &&& checkAnswerInner_St_true
-                        xs
-                        newState
-                        constarg4
-                        constarg5
-                        constarg6
-                        constarg7))))
+           &&& (step_St constarg0 constarg1 constarg2 constarg3 x newState
+                &&& (checkState_true newState
+                     &&& checkAnswerInner_St_true
+                           xs
+                           newState
+                           constarg4
+                           constarg5
+                           constarg6
+                           constarg7))))
   
   and checkAnswerInner_St_St_false
     a
@@ -938,27 +934,25 @@
              &&& (constarg5
                   =/= constarg1
                   &&& (constarg6 =/= constarg2 &&& (constarg7 =/= constarg3))))
-      ; Fresh.two (fun x xs ->
+      ; Fresh.three (fun x xs newState ->
           a
           === !!(Cons (x, xs))
           &&& (checkStep_St_true constarg0 constarg1 constarg2 constarg3 x
-               &&& Fresh.one (fun newState ->
-                 step_St constarg0 constarg1 constarg2 constarg3 x newState
-                 &&& (checkState_true newState
-                      &&& checkAnswerInner_St_false
-                            xs
-                            newState
-                            constarg4
-                            constarg5
-                            constarg6
-                            constarg7))))
-      ; Fresh.two (fun x xs ->
+               &&& (step_St constarg0 constarg1 constarg2 constarg3 x newState
+                    &&& (checkState_true newState
+                         &&& checkAnswerInner_St_false
+                               xs
+                               newState
+                               constarg4
+                               constarg5
+                               constarg6
+                               constarg7))))
+      ; Fresh.three (fun x xs newState ->
           a
           === !!(Cons (x, xs))
           &&& (checkStep_St_true constarg0 constarg1 constarg2 constarg3 x
-               &&& Fresh.one (fun newState ->
-                 step_St constarg0 constarg1 constarg2 constarg3 x newState
-                 &&& checkState_false newState)))
+               &&& (step_St constarg0 constarg1 constarg2 constarg3 x newState
+                    &&& checkState_false newState)))
       ; Fresh.two (fun x xs ->
           a
           === !!(Cons (x, xs))

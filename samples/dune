@@ -27,4 +27,5 @@
   self_call
   sub
   twinscall
-  value))
+  value
+  bridge))
