@@ -33,5 +33,7 @@ dump*
 target.ml
 target_bench.ml
 
+*.log
+
 #for now 
 Makefile

@@ -83,7 +83,7 @@ and is_even_true n =
 # Benchmark 
 The benchmark is presented below. The comparison was made using the [ocaml-benchmark](https://github.com/Chris00/ocaml-benchmarkgit) library. By `true` and `false`, we mean the execution of the original functions with the appropriate parameters. Under `spec_false` and `spec_true` --- specialized.
 
-A large number is better. The percentage shows the gain of the execution of the function from the column on the left relative to the corresponding function in the upper row.
+In case of `Rate` large number is better, in the case of `s/iter` --- smaller number. The percentage shows the gain of the execution of the function from the column on the left relative to the corresponding function in the upper row.
 
 ## Is_even
 
@@ -160,8 +160,62 @@ The benchmark code is located [here](https://github.com/IgorErin/SpecialKanren/b
  |    none |314+-0/s     |   --    |   -5%|
 | spec_none | 330+-0/s |        5% |      --|
 
-
 The benchmark code is located [here](https://github.com/IgorErin/SpecialKanren/blob/master/tests/sub/bench.ml).
+
+## GCW 
+
+| count: 10 | Rate   |    spec_false  |    false |
+| ------------ | ----- | -------------- | -------- |
+| spec_false  | 9648+-1081/s   |      --      | -25% |
+|  false      | 12876+-  39/s  |      33%     |    --|
+
+|count: 100 |   Rate  |   spec_false  |    false |
+| ----------- | ------- | ------------- | -------- |
+| spec_false  | 366+-10/s |        --   |    -19%|
+|     false   | 454+- 3/s  |      24%   |      --|
+
+
+| count: 1000 | Rate  |    spec_false  |    false|
+| ------------- | ----- | --------------- | -------|
+| spec_false | 17.1+-0.2/s   |      --    |    -8% |
+|     false  |  18.7+-0.1/s  |       9%   |      -- |
+
+|count: 10 |   Rate  |  true | spec_true |
+| ----------- | ------ | ----- | --------- |
+| true    |   18.0+-0.0/s |  --  | -52% |
+| spec_true  | 37.4+-0.6/s  |  107%   |  -- |
+
+| count: 100 | Rate |  true | spec_true |
+| ------------- | ---- | ---- |----------- |
+ |    true | 1.25+-0.00/s    |    --    |  -52% |
+| spec_true | 2.61+-0.01/s  |    108%   |     -- |
+
+| count: 1000 |  s/iter | true | spec_true |
+| ------------- | ------ | ------ | -------- |
+ |    true | 6.33+-0.05     |   --    |  -54% |
+| spec_true | 2.92+-0.05   |   117%  |      -- |
+
+## Bridge 
+
+| count: 10|  Rate  | none | spec_none |
+| --------- | ------- | ----- | ------- |
+ |    none |  6871+- 165/s      |  --   |   -44% |
+|spec_none | 12249+-1965/s  |    78%   |     -- |
+
+| count: 100 | Rate  | none | spec_none |
+| --------- | ------- | ----- | ------- |
+|     none|  421+-1/s |       --  |    -29%|
+|spec_none | 596+-8/s     |  42%    |    -- |
+
+| count: 1000 | Rate   |none  |spec_none |
+| --------- | ------- | ----- | ------- |
+ |    none | 15.6+-0.2/s     |   --   |   -54% |
+| spec_none | 33.7+-0.6/s  |    116%  |      --|
+
+|count: 1 | s/iter | some | spec_some |
+| --------- | ------- | ----- | ------- |
+|     some | 15.8+- 0.0   |     --   |   -43% |
+|spec_some | 9.03+-0.02   |    75%   |     -- |
 
 ## Further work
 - Reduce unnecessary variables. This becomes difficult with recursive calls and with the =/= relation.

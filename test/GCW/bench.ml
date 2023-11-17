@@ -21,7 +21,7 @@ let run_true =
 ;;
 
 let numbers = Base.List.init 3 ~f:(fun index -> Core.Int.pow 10 (Int.add index 1))
-let start list = latencyN ~repeat:3 10L list
+let start list = latencyN ~repeat:3 ~style:Nil 10L list
 
 let () =
   let open OCanren in

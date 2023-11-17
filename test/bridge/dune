@@ -33,6 +33,30 @@
    -new-typenames
    GT.ppx_all)))
 
+(rule
+ (deps
+  (:exec %{project_root}/bin/main.exe)
+  %{cmo:../../samples/bridge})
+ (target target_bench.ml)
+ (mode
+  (promote (until-clean)))
+ (action
+  (progn
+   (run
+    sh
+    -c
+    "%{exec} -cmt -par q1 -fname getAnswer -o %{target} ../../samples/.Samples.objs/byte/bridge.cmt")
+   (run
+    sh
+    -c
+    "ocamlformat --enable-outside-detected-project -o %{target} ./%{target} "))))
+
+(executable
+ (public_name bridge_bench)
+ (name bench)
+ (libraries GT OCanren core benchmark)
+ (modules bench target_bench))
+
 (cram
  (deps run.exe target.ml)
  (package SpecialKanren))
