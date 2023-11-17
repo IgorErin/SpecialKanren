@@ -28,21 +28,17 @@ But as always, the implementation of such an abstract approach leaves much to be
 Therefore, in this work, an attempt is made to specialize each relation under pre-known parameters. Namely, the parameters with the final domain.
 
 ``` ocaml 
+let rec le_false x y =
+  x
+  =/= !!O
+  &&& (y === !!O)
+  ||| Fresh.two (fun x' y' -> x === !!(S x') &&& (y === !!(S y') &&& le_false x' y'))
 
-  let rec le_false x y = 
-    ((x =/= (!! O)) &&& (y === (!! O)))
-    ||| (Fresh.two (fun x' y' ->
-        (x === (!! (S (x')))) 
-        &&& ((y === (!! (S (y'))))
-         &&& (le_false x' y'))))
-
-  and le_true x y =
-   (x === (!! O)) 
-   ||| (Fresh.two (fun x' y' -> 
-    (x === (!! (S (x')))) 
-    &&& ((y === (!! (S (y')))) 
-    &&& (le_true x' y'))))
-
+and le_true x y =
+  x
+  === !!O
+  ||| Fresh.two (fun x' y' -> x === !!(S x') &&& (y === !!(S y') &&& le_true x' y'))
+;;
 ```
 
 Thus, the ratio less than or equal to the one mentioned above will be expressed as two ratios, for two values of its parameter, `false` and `true` respectively. 
@@ -77,16 +73,12 @@ The parity ratio, well, what's complicated here. However, the implementation pre
 But the specialized program depends linearly.
 
 ``` ocaml 
+let rec is_even_false n =
+  Fresh.one (fun pred_n -> n === !!(S pred_n) &&& is_even_true pred_n)
 
-let rec is_even_false n = 
-    Fresh.two (fun not_res pred_n -> 
-        (n === (!! (S (pred_n)))) &&& ((not_res === (!! true)) &&& (is_even_true pred_n)))
-
-and is_even_true n = 
-    (n === (!! O)) 
-    ||| (Fresh.two (fun not_res pred_n -> 
-        (n === (!! (S (pred_n)))) &&& ((not_res === (!! false)) &&& (is_even_false pred_n))))
-
+and is_even_true n =
+  n === !!O ||| Fresh.one (fun pred_n -> n === !!(S pred_n) &&& is_even_false pred_n)
+;;
 ``` 
 # Benchmark 
 The benchmark is presented below. The comparison was made using the [ocaml-benchmark](https://github.com/Chris00/ocaml-benchmarkgit) library. By `true` and `false`, we mean the execution of the original functions with the appropriate parameters. Under `spec_false` and `spec_true` --- specialized.
