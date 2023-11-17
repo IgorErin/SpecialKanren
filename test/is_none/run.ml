@@ -9,7 +9,7 @@ let show_ans x = [%show: Bool.logic] () x
 let reify_ans x = Bool.reify x
 
 let () =
-  run_r reify_ans show_ans 10 q qh ("is none none", fun result -> is_none_None result)
+  run_r reify_ans show_ans 10 q qh ("is none none", fun result -> is_none_1None result)
 ;;
 
 let () =
@@ -19,5 +19,5 @@ let () =
     10
     q
     qh
-    ("is none some ", fun is -> Fresh.one (fun x -> is_none_Some is x))
+    ("is none some ", fun is -> Fresh.one (fun x -> is_none_1Some is x))
 ;;

@@ -29,7 +29,7 @@ let run_Some_spec n =
   let open OCanren in
   let _ =
     Stream.take ~n
-    @@ run qrs (fun fst snd thd -> Target_bench.sub_Some fst snd thd) (fun _ _ _ -> ())
+    @@ run qrs (fun fst snd thd -> Target_bench.sub_2Some fst snd thd) (fun _ _ _ -> ())
   in
   ()
 ;;
@@ -38,7 +38,7 @@ let run_None_spec n =
   let open OCanren in
   let _ =
     Stream.take ~n
-    @@ run qr (fun fst snd -> Target_bench.sub_None fst snd) (fun _ _ _ -> ())
+    @@ run qr (fun fst snd -> Target_bench.sub_2None fst snd) (fun _ _ _ -> ())
   in
   ()
 ;;

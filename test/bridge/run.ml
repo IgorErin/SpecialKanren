@@ -19,8 +19,8 @@ let rec int2nat i = if i = 0 then !!O else !!(S (int2nat @@ (i - 1)))
 let _ = run_r reify_ans show_ans 1 q qh ("some", fun q -> getAnswer q (int2nat 17 |> some))
 
 let _ =
-  run_r reify_ans show_ans 1 q qh ("spec some", fun q -> getAnswer_Some q (int2nat 17))
+  run_r reify_ans show_ans 1 q qh ("spec some", fun q -> getAnswer_1Some q (int2nat 17))
 ;;
 
 let _ = run_r reify_ans show_ans 1 q qh ("none", fun q -> getAnswer q (Option.none ()))
-let _ = run_r reify_ans show_ans 1 q qh ("spec none", fun q -> getAnswer_None q)
+let _ = run_r reify_ans show_ans 1 q qh ("spec none", fun q -> getAnswer_1None q)

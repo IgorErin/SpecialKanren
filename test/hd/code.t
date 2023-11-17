@@ -26,5 +26,5 @@
       ]
   ;;
   
-  let rec hd_opt_None l = l === !!Nil
-  and hd_opt_Some l constarg0 = Fresh.one (fun tl -> l === !!(Cons (constarg0, tl)))
+  let rec hd_opt_1None l = l === !!Nil
+  and hd_opt_1Some l constarg0 = Fresh.one (fun tl -> l === !!(Cons (constarg0, tl)))

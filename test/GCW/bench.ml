@@ -1,6 +1,5 @@
 open Target_bench
 open Benchmark
-open OCanren.Std.Nat
 
 let run_gen rel n =
   let open OCanren in
@@ -8,21 +7,21 @@ let run_gen rel n =
   ()
 ;;
 
-let run_false_spec = run_gen Target_bench.is_even_1false
-let run_true_spec = run_gen Target_bench.is_even_1false
+let run_false_spec = run_gen Target_bench.checkAnswer_1false
+let run_true_spec = run_gen Target_bench.checkAnswer_1true
 
 let run_false =
   let open OCanren in
-  run_gen (fun x -> Target_bench.is_even x !!false)
+  run_gen (fun x -> Target_bench.checkAnswer x !!false)
 ;;
 
 let run_true =
   let open OCanren in
-  run_gen (fun x -> Target_bench.is_even x !!true)
+  run_gen (fun x -> Target_bench.checkAnswer x !!true)
 ;;
 
 let numbers = Base.List.init 3 ~f:(fun index -> Core.Int.pow 10 (Int.add index 1))
-let start list = latencyN ~repeat:10 ~style:Nil 30L list
+let start list = latencyN ~repeat:3 10L list
 
 let () =
   let open OCanren in

@@ -23,5 +23,5 @@
     conde [ num === !!O &&& (is === !!true); num =/= !!O &&& (is === !!false) ]
   ;;
   
-  let rec is_zero_false num = num =/= !!O
-  and is_zero_true num = num === !!O
+  let rec is_zero_1false num = num =/= !!O
+  and is_zero_1true num = num === !!O

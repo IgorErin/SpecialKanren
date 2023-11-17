@@ -25,5 +25,5 @@
     conde [ self1 !!false &&& (is === !!true); self1 !!true &&& (is === !!false) ]
   ;;
   
-  let rec self1_false = self1_true
-  and self1_true = self1_false
+  let rec self1_0false = self1_0true
+  and self1_0true = self1_0false

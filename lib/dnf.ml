@@ -9,7 +9,10 @@ type ('a, 'b) item =
 type ('a, 'b) cnj = ('a, 'b) item list
 type ('a, 'b) dnf = ('a, 'b) cnj list
 
-let is_fresh = function DFresh _ -> true | _ -> false
+let is_fresh = function
+  | DFresh _ -> true
+  | _ -> false
+;;
 
 let of_canren canren =
   let wrap x = x |> Core.List.return |> Core.List.return in

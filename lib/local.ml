@@ -22,15 +22,16 @@ module Utils = struct
     result
   ;;
 
-  let mk_new_fresh_fun vars = 
-    let count = ref 0 in 
+  let mk_new_fresh_fun vars =
+    let count = ref 0 in
     let rec result name =
-      let new_name = Printf.sprintf "%s_nf_%d" (Ident.name name) !count in 
+      let new_name = Printf.sprintf "%s_nf_%d" (Ident.name name) !count in
       count := !count + 1;
-      let ident = Ident.create_local new_name in 
+      let ident = Ident.create_local new_name in
       if List.exists (equal_names ident) vars then result name else ident
-  in
-  result 
+    in
+    result
+  ;;
 
   let travers_unify_graph (cnj : _ cnj) =
     let info =
@@ -154,7 +155,7 @@ module Passes = struct
   ;;
 
   let rename_fresh create_new_name conj =
-    let open Utils in 
+    let open Utils in
     let rec map_value map = function
       | Var v -> Var (IdentMap.find_opt v map |> Option.value ~default:v)
       | Constr (desc, values) ->
@@ -162,35 +163,42 @@ module Passes = struct
         Constr (desc, values)
     in
     conj
-    |> List.fold_left (fun (dnf, fresh_acc, map) ->
-      let return d = d :: dnf, fresh_acc, map in
-      function
-      | DFresh vars ->
-        let new_vars_pairs =
-          vars
-          |> List.filter (fun x -> List.exists (Utils.equal_names x) fresh_acc)
-          |> List.map (fun name -> name, create_new_name name)
-          |> List.to_seq
-        in
-        let new_map = IdentMap.add_seq new_vars_pairs map in
-        let vars =
-          List.map (fun x -> IdentMap.find_opt x new_map |> Option.value ~default:x) vars
-        in
-        DFresh vars :: dnf, vars @ fresh_acc, new_map
-      | DCall (name, values) -> return @@ DCall (name, List.map (map_value map) values)
-      | DUnify (left, right) -> return @@ DUnify (map_value map left, map_value map right)
-      | DDisunify (left, right) ->
-        return @@ DDisunify (map_value map left, map_value map right)) ([], [], IdentMap.empty)
-    |> fun (dnf, _, _) -> List.rev dnf 
+    |> List.fold_left
+         (fun (dnf, fresh_acc, map) ->
+           let return d = d :: dnf, fresh_acc, map in
+           function
+           | DFresh vars ->
+             let new_vars_pairs =
+               vars
+               |> List.filter (fun x -> List.exists (Utils.equal_names x) fresh_acc)
+               |> List.map (fun name -> name, create_new_name name)
+               |> List.to_seq
+             in
+             let new_map = IdentMap.add_seq new_vars_pairs map in
+             let vars =
+               List.map
+                 (fun x -> IdentMap.find_opt x new_map |> Option.value ~default:x)
+                 vars
+             in
+             DFresh vars :: dnf, vars @ fresh_acc, new_map
+           | DCall (name, values) ->
+             return @@ DCall (name, List.map (map_value map) values)
+           | DUnify (left, right) ->
+             return @@ DUnify (map_value map left, map_value map right)
+           | DDisunify (left, right) ->
+             return @@ DDisunify (map_value map left, map_value map right))
+         ([], [], IdentMap.empty)
+    |> fun (dnf, _, _) -> List.rev dnf
   ;;
 
   let freshup global_vars conj =
-    let fresh = Utils.get_freshs conj |> List.concat in 
-    let create_new_name = Utils.mk_new_fresh_fun (global_vars @ fresh) in 
-    let conj = rename_fresh create_new_name conj in  
-    let fresh_in_order = Utils.get_freshs conj in 
-    let without_fresh = List.filter (fun x -> not @@ Dnf.is_fresh x) conj in 
+    let fresh = Utils.get_freshs conj |> List.concat in
+    let create_new_name = Utils.mk_new_fresh_fun (global_vars @ fresh) in
+    let conj = rename_fresh create_new_name conj in
+    let fresh_in_order = Utils.get_freshs conj in
+    let without_fresh = List.filter (fun x -> not @@ Dnf.is_fresh x) conj in
     DFresh (List.rev fresh_in_order |> List.concat) :: without_fresh
+  ;;
 end
 
 module Propagate = struct
@@ -345,8 +353,6 @@ module Reduce = struct
       conj
   ;;
 
-
-
   let try_reduce cnj =
     let freshs = Utils.get_freshs cnj |> List.concat in
     List.fold_left
@@ -408,9 +414,9 @@ let run ~info ~freshs ~globals ~dnf =
       dnf
       consts_info
     (* freshup *)
-    |> List.map (Passes.to_value_value)
+    |> List.map Passes.to_value_value
     |> List.map (Passes.freshup globals)
-    |> List.filter_map (Passes.reduce_const_const)
+    |> List.filter_map Passes.reduce_const_const
     (*propagate *)
     |> List.filter_map (Propagate.run is_global)
     |> List.filter_map Passes.clean_taut

@@ -40,12 +40,17 @@
       [ twin !!false !!false is x; twin !!false !!false is x; twin !!false !!false is x ]
   ;;
   
-  let rec twin_false_false_true x = x === !!true
-  and twin_false_false_false x = x === !!true
+  let rec twin_0false_1false_2true x = x === !!true
+  and twin_0false_1false_2false x = x === !!true
   
-  and twins_false x =
-    conde [ twin_false_false_false x; twin_false_false_false x; twin_false_false_false x ]
+  and twins_1false x =
+    conde
+      [ twin_0false_1false_2false x
+      ; twin_0false_1false_2false x
+      ; twin_0false_1false_2false x
+      ]
   
-  and twins_true x =
-    conde [ twin_false_false_true x; twin_false_false_true x; twin_false_false_true x ]
+  and twins_1true x =
+    conde
+      [ twin_0false_1false_2true x; twin_0false_1false_2true x; twin_0false_1false_2true x ]
   ;;

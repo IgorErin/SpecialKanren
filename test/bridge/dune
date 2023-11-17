@@ -34,4 +34,5 @@
    GT.ppx_all)))
 
 (cram
- (deps run.exe target.ml))
+ (deps run.exe target.ml)
+ (package SpecialKanren))

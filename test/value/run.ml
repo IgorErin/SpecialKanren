@@ -15,9 +15,9 @@ let () =
     10
     qrs
     qrsh
-    ("value some", fun fst snd result -> value_Some fst snd result)
+    ("value some", fun fst snd result -> value_0Some fst snd result)
 ;;
 
 let () =
-  run_r reify_ans show_ans 10 qr qrh ("value none", fun fst snd -> value_None fst snd)
+  run_r reify_ans show_ans 10 qr qrh ("value none", fun fst snd -> value_0None fst snd)
 ;;

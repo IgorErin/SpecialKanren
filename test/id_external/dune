@@ -22,4 +22,5 @@
     "ocamlformat --enable-outside-detected-project -o %{target} ./%{target} "))))
 
 (cram
+ (package SpecialKanren)
  (deps target.ml))

@@ -106,7 +106,8 @@ let to_dnf dnf =
 let create_name source_info =
   let postfix =
     source_info.consts
-    |> List.map (fun (_, (x : Types.constructor_description)) -> x.cstr_name)
+    |> List.map (fun (number, (x : Types.constructor_description)) ->
+      Int.to_string number ^ x.cstr_name)
     |> String.concat "_"
   in
   Ident.name source_info.fname ^ "_" ^ postfix

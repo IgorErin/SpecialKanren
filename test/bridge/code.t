@@ -1896,7 +1896,7 @@
             ])))
   ;;
   
-  let rec checkPerson_true state person =
+  let rec checkPerson_2true state person =
     conde
       [ Fresh.five (fun l a0 b0 c0 d0 ->
           state === !!(St (l, a0, b0, c0, d0)) &&& (person === !!A &&& (a0 === l)))
@@ -1908,7 +1908,7 @@
           state === !!(St (l, a0, b0, c0, d0)) &&& (person === !!D &&& (d0 === l)))
       ]
   
-  and checkPerson_false state person =
+  and checkPerson_2false state person =
     conde
       [ Fresh.five (fun l a0 b0 c0 d0 ->
           state === !!(St (l, a0, b0, c0, d0)) &&& (person === !!A &&& (a0 =/= l)))
@@ -1920,7 +1920,7 @@
           state === !!(St (l, a0, b0, c0, d0)) &&& (person === !!D &&& (d0 =/= l)))
       ]
   
-  and grForPerson_true x y =
+  and grForPerson_2true x y =
     conde
       [ x === !!A &&& (y === !!B)
       ; x === !!A &&& (y === !!C)
@@ -1929,7 +1929,7 @@
       ; x === !!C &&& (y === !!D)
       ]
   
-  and movePerson_St constarg0 constarg1 constarg2 constarg3 constarg4 person q41 =
+  and movePerson_0St constarg0 constarg1 constarg2 constarg3 constarg4 person q41 =
     conde
       [ constarg1
         === !!true
@@ -1973,39 +1973,40 @@
              &&& (q41 === !!(St (constarg0, constarg1, constarg2, constarg3, !!true))))
       ]
   
-  and checkStep_false state step =
+  and checkStep_2false state step =
     conde
-      [ Fresh.one (fun p -> step === !!(One p) &&& checkPerson_false state p)
+      [ Fresh.one (fun p -> step === !!(One p) &&& checkPerson_2false state p)
       ; Fresh.three (fun p q q72 ->
           step
           === !!(Two (p, q))
-          &&& (checkPerson_false state p
-               &&& (checkPerson_false state q &&& grForPerson p q q72)))
+          &&& (checkPerson_2false state p
+               &&& (checkPerson_2false state q &&& grForPerson p q q72)))
       ; Fresh.three (fun p q q72 ->
           step
           === !!(Two (p, q))
-          &&& (checkPerson_true state p
-               &&& (checkPerson_false state q &&& grForPerson p q q72)))
+          &&& (checkPerson_2true state p
+               &&& (checkPerson_2false state q &&& grForPerson p q q72)))
       ; Fresh.four (fun p q q66 q72 ->
           step
           === !!(Two (p, q))
-          &&& (checkPerson_false state p
-               &&& (checkPerson_true state q &&& (grForPerson p q q72 &&& (q66 === q72)))))
+          &&& (checkPerson_2false state p
+               &&& (checkPerson_2true state q &&& (grForPerson p q q72 &&& (q66 === q72)))))
       ; Fresh.two (fun p q ->
           step
           === !!(Two (p, q))
-          &&& (checkPerson_true state p
-               &&& (checkPerson_true state q &&& grForPerson_false p q)))
+          &&& (checkPerson_2true state p
+               &&& (checkPerson_2true state q &&& grForPerson_2false p q)))
       ]
   
-  and checkStep_true state step =
-    Fresh.one (fun p -> step === !!(One p) &&& checkPerson_true state p)
+  and checkStep_2true state step =
+    Fresh.one (fun p -> step === !!(One p) &&& checkPerson_2true state p)
     ||| Fresh.two (fun p q ->
       step
       === !!(Two (p, q))
-      &&& (checkPerson_true state p &&& (checkPerson_true state q &&& grForPerson_true p q)))
+      &&& (checkPerson_2true state p
+           &&& (checkPerson_2true state q &&& grForPerson_2true p q)))
   
-  and grForPerson_false x y =
+  and grForPerson_2false x y =
     conde
       [ x === !!A &&& (y === !!A)
       ; x === !!B &&& (y === !!A)
@@ -2017,7 +2018,7 @@
       ; x === !!D
       ]
   
-  and checkPerson_St_true constarg0 constarg1 constarg2 constarg3 constarg4 person =
+  and checkPerson_0St_2true constarg0 constarg1 constarg2 constarg3 constarg4 person =
     conde
       [ constarg1 === constarg0 &&& (person === !!A)
       ; constarg2 === constarg0 &&& (person === !!B)
@@ -2025,7 +2026,7 @@
       ; constarg4 === constarg0 &&& (person === !!D)
       ]
   
-  and checkPerson_St_false constarg0 constarg1 constarg2 constarg3 constarg4 person =
+  and checkPerson_0St_2false constarg0 constarg1 constarg2 constarg3 constarg4 person =
     conde
       [ person === !!A &&& (constarg1 =/= constarg0)
       ; person === !!B &&& (constarg2 =/= constarg0)
@@ -2033,46 +2034,78 @@
       ; person === !!D &&& (constarg4 =/= constarg0)
       ]
   
-  and checkStep_St_false constarg0 constarg1 constarg2 constarg3 constarg4 step =
+  and checkStep_0St_2false constarg0 constarg1 constarg2 constarg3 constarg4 step =
     conde
       [ Fresh.one (fun p ->
           step
           === !!(One p)
-          &&& checkPerson_St_false constarg0 constarg1 constarg2 constarg3 constarg4 p)
+          &&& checkPerson_0St_2false constarg0 constarg1 constarg2 constarg3 constarg4 p)
       ; Fresh.three (fun p q q72 ->
           step
           === !!(Two (p, q))
-          &&& (checkPerson_St_false constarg0 constarg1 constarg2 constarg3 constarg4 p
-               &&& (checkPerson_St_false constarg0 constarg1 constarg2 constarg3 constarg4 q
+          &&& (checkPerson_0St_2false constarg0 constarg1 constarg2 constarg3 constarg4 p
+               &&& (checkPerson_0St_2false
+                      constarg0
+                      constarg1
+                      constarg2
+                      constarg3
+                      constarg4
+                      q
                     &&& grForPerson p q q72)))
       ; Fresh.three (fun p q q72 ->
           step
           === !!(Two (p, q))
-          &&& (checkPerson_St_true constarg0 constarg1 constarg2 constarg3 constarg4 p
-               &&& (checkPerson_St_false constarg0 constarg1 constarg2 constarg3 constarg4 q
+          &&& (checkPerson_0St_2true constarg0 constarg1 constarg2 constarg3 constarg4 p
+               &&& (checkPerson_0St_2false
+                      constarg0
+                      constarg1
+                      constarg2
+                      constarg3
+                      constarg4
+                      q
                     &&& grForPerson p q q72)))
       ; Fresh.four (fun p q q66 q72 ->
           step
           === !!(Two (p, q))
-          &&& (checkPerson_St_false constarg0 constarg1 constarg2 constarg3 constarg4 p
-               &&& (checkPerson_St_true constarg0 constarg1 constarg2 constarg3 constarg4 q
+          &&& (checkPerson_0St_2false constarg0 constarg1 constarg2 constarg3 constarg4 p
+               &&& (checkPerson_0St_2true
+                      constarg0
+                      constarg1
+                      constarg2
+                      constarg3
+                      constarg4
+                      q
                     &&& (grForPerson p q q72 &&& (q66 === q72)))))
       ; Fresh.two (fun p q ->
           step
           === !!(Two (p, q))
-          &&& (checkPerson_St_true constarg0 constarg1 constarg2 constarg3 constarg4 p
-               &&& (checkPerson_St_true constarg0 constarg1 constarg2 constarg3 constarg4 q
-                    &&& grForPerson_false p q)))
+          &&& (checkPerson_0St_2true constarg0 constarg1 constarg2 constarg3 constarg4 p
+               &&& (checkPerson_0St_2true
+                      constarg0
+                      constarg1
+                      constarg2
+                      constarg3
+                      constarg4
+                      q
+                    &&& grForPerson_2false p q)))
       ]
   
-  and getAnswerInner_St_None answer state constarg0 constarg1 constarg2 constarg3 constarg4 =
+  and getAnswerInner_2St_3None
+    answer
+    state
+    constarg0
+    constarg1
+    constarg2
+    constarg3
+    constarg4
+    =
     conde
       [ Fresh.three (fun x xs q14 ->
           answer
           === !!(Cons (x, xs))
-          &&& (checkStep_true state x
+          &&& (checkStep_2true state x
                &&& (step state x q14
-                    &&& getAnswerInner_St_None
+                    &&& getAnswerInner_2St_3None
                           xs
                           q14
                           constarg0
@@ -2080,13 +2113,13 @@
                           constarg2
                           constarg3
                           constarg4)))
-      ; Fresh.two (fun x xs -> answer === !!(Cons (x, xs)) &&& checkStep_false state x)
+      ; Fresh.two (fun x xs -> answer === !!(Cons (x, xs)) &&& checkStep_2false state x)
       ; answer
         === !!Nil
         &&& (state =/= !!(St (constarg0, constarg1, constarg2, constarg3, constarg4)))
       ]
   
-  and getAnswerInner_St_Some
+  and getAnswerInner_2St_3Some
     answer
     state
     constarg0
@@ -2099,9 +2132,9 @@
     Fresh.five (fun x xs q14 t1 q12 ->
       answer
       === !!(Cons (x, xs))
-      &&& (checkStep_true state x
+      &&& (checkStep_2true state x
            &&& (step state x q14
-                &&& (getAnswerInner_St_Some
+                &&& (getAnswerInner_2St_3Some
                        xs
                        q14
                        constarg0
@@ -2117,31 +2150,31 @@
               === !!(St (constarg0, constarg1, constarg2, constarg3, constarg4))
               &&& (constarg5 === !!O)))
   
-  and step_St constarg0 constarg1 constarg2 constarg3 constarg4 step q34 =
+  and step_0St constarg0 constarg1 constarg2 constarg3 constarg4 step q34 =
     Fresh.two (fun p q35 ->
       step
       === !!(One p)
-      &&& (movePerson_St constarg0 constarg1 constarg2 constarg3 constarg4 p q35
+      &&& (movePerson_0St constarg0 constarg1 constarg2 constarg3 constarg4 p q35
            &&& moveLight q35 q34))
     ||| Fresh.four (fun p q q37 q39 ->
       step
       === !!(Two (p, q))
-      &&& (movePerson_St constarg0 constarg1 constarg2 constarg3 constarg4 p q39
+      &&& (movePerson_0St constarg0 constarg1 constarg2 constarg3 constarg4 p q39
            &&& (movePerson q39 q q37 &&& moveLight q37 q34)))
   
-  and checkStep_St_true constarg0 constarg1 constarg2 constarg3 constarg4 step =
+  and checkStep_0St_2true constarg0 constarg1 constarg2 constarg3 constarg4 step =
     Fresh.one (fun p ->
       step
       === !!(One p)
-      &&& checkPerson_St_true constarg0 constarg1 constarg2 constarg3 constarg4 p)
+      &&& checkPerson_0St_2true constarg0 constarg1 constarg2 constarg3 constarg4 p)
     ||| Fresh.two (fun p q ->
       step
       === !!(Two (p, q))
-      &&& (checkPerson_St_true constarg0 constarg1 constarg2 constarg3 constarg4 p
-           &&& (checkPerson_St_true constarg0 constarg1 constarg2 constarg3 constarg4 q
-                &&& grForPerson_true p q)))
+      &&& (checkPerson_0St_2true constarg0 constarg1 constarg2 constarg3 constarg4 p
+           &&& (checkPerson_0St_2true constarg0 constarg1 constarg2 constarg3 constarg4 q
+                &&& grForPerson_2true p q)))
   
-  and getAnswerInner_St_St_Some
+  and getAnswerInner_1St_2St_3Some
     answer
     constarg0
     constarg1
@@ -2158,9 +2191,9 @@
     Fresh.five (fun x xs q14 t1 q12 ->
       answer
       === !!(Cons (x, xs))
-      &&& (checkStep_St_true constarg0 constarg1 constarg2 constarg3 constarg4 x
-           &&& (step_St constarg0 constarg1 constarg2 constarg3 constarg4 x q14
-                &&& (getAnswerInner_St_Some
+      &&& (checkStep_0St_2true constarg0 constarg1 constarg2 constarg3 constarg4 x
+           &&& (step_0St constarg0 constarg1 constarg2 constarg3 constarg4 x q14
+                &&& (getAnswerInner_2St_3Some
                        xs
                        q14
                        constarg5
@@ -2182,7 +2215,7 @@
                              === constarg3
                              &&& (constarg9 === constarg4 &&& (constarg10 === !!O)))))))
   
-  and getAnswerInner_St_St_None
+  and getAnswerInner_1St_2St_3None
     answer
     constarg0
     constarg1
@@ -2199,9 +2232,9 @@
       [ Fresh.three (fun x xs q14 ->
           answer
           === !!(Cons (x, xs))
-          &&& (checkStep_St_true constarg0 constarg1 constarg2 constarg3 constarg4 x
-               &&& (step_St constarg0 constarg1 constarg2 constarg3 constarg4 x q14
-                    &&& getAnswerInner_St_None
+          &&& (checkStep_0St_2true constarg0 constarg1 constarg2 constarg3 constarg4 x
+               &&& (step_0St constarg0 constarg1 constarg2 constarg3 constarg4 x q14
+                    &&& getAnswerInner_2St_3None
                           xs
                           q14
                           constarg5
@@ -2212,7 +2245,7 @@
       ; Fresh.two (fun x xs ->
           answer
           === !!(Cons (x, xs))
-          &&& checkStep_St_false constarg0 constarg1 constarg2 constarg3 constarg4 x)
+          &&& checkStep_0St_2false constarg0 constarg1 constarg2 constarg3 constarg4 x)
       ; answer
         === !!Nil
         &&& (constarg5
@@ -2224,8 +2257,8 @@
                        &&& (constarg8 =/= constarg3 &&& (constarg9 =/= constarg4)))))
       ]
   
-  and getAnswer_None answer =
-    getAnswerInner_St_St_None
+  and getAnswer_1None answer =
+    getAnswerInner_1St_2St_3None
       answer
       !!true
       !!true
@@ -2238,8 +2271,8 @@
       !!false
       !!false
   
-  and getAnswer_Some answer constarg0 =
-    getAnswerInner_St_St_Some
+  and getAnswer_1Some answer constarg0 =
+    getAnswerInner_1St_2St_3Some
       answer
       !!true
       !!true

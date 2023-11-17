@@ -16,12 +16,12 @@ let _ =
   let () =
     L.iter (fun x -> Printf.printf "%s\n" x)
     @@ Stream.take ~n:10
-    @@ run q (fun q -> for_allo_false cond q) (fun r -> show_ans @@ r#reify reify)
+    @@ run q (fun q -> for_allo_2false cond q) (fun r -> show_ans @@ r#reify reify)
   in
   let () =
     L.iter (fun x -> Printf.printf "%s\n" x)
     @@ Stream.take ~n:10
-    @@ run q (fun q -> for_allo_true cond q) (fun r -> show_ans @@ r#reify reify)
+    @@ run q (fun q -> for_allo_2true cond q) (fun r -> show_ans @@ r#reify reify)
   in
   ()
 ;;

@@ -9,7 +9,7 @@ let show_ans x = [%show: Nat.logic List.logic] () x
 let reify_ans x = List.reify Nat.reify x
 let singleton x = List.(x % List.nil ())
 let singletonvalue ls value = ls === singleton value
-let () = run_r reify_ans show_ans 100 q qh ("hd of empty list", fun q -> hd_opt_None q)
+let () = run_r reify_ans show_ans 100 q qh ("hd of empty list", fun q -> hd_opt_1None q)
 
 let () =
   run_r
@@ -20,5 +20,5 @@ let () =
     qrh
     ( "hd and tl"
     , fun h list ->
-        Fresh.one (fun value -> singletonvalue h value &&& hd_opt_Some list value) )
+        Fresh.one (fun value -> singletonvalue h value &&& hd_opt_1Some list value) )
 ;;
