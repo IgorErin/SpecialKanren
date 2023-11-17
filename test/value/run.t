@@ -1,5 +1,7 @@
   $ ./run.exe
-  second test 
-  default = _.10 result = _.10
-  first test 
-  opt = _.12 default = _.11 result = _.12
+  value some, 10 answers {
+  q=_.12; r=_.11; s=_.12;
+  }
+  value none, 10 answers {
+  q=_.10; r=_.10;
+  }

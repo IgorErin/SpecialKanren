@@ -1,24 +1,26 @@
   $ ./run.exe
-  first test 
-  x = _.10 [=/= O] y = O
-  x = S (_.12 [=/= O]) y = S (O)
-  x = S (S (_.14 [=/= O])) y = S (S (O))
-  x = S (S (S (_.16 [=/= O]))) y = S (S (S (O)))
-  x = S (S (S (S (_.18 [=/= O])))) y = S (S (S (S (O))))
-  x = S (S (S (S (S (_.20 [=/= O]))))) y = S (S (S (S (S (O)))))
-  x = S (S (S (S (S (S (_.22 [=/= O])))))) y = S (S (S (S (S (S (O))))))
-  x = S (S (S (S (S (S (S (_.24 [=/= O]))))))) y = S (S (S (S (S (S (S (O)))))))
-  x = S (S (S (S (S (S (S (S (_.26 [=/= O])))))))) y = S (S (S (S (S (S (S (S (O))))))))
-  x = S (S (S (S (S (S (S (S (S (_.28 [=/= O]))))))))) y = S (S (S (S (S (S (S (S (S (O)))))))))
-  second test 
-  x = O y = _.11
-  x = S (O) y = S (_.13)
-  x = S (S (O)) y = S (S (_.15))
-  x = S (S (S (O))) y = S (S (S (_.17)))
-  x = S (S (S (S (O)))) y = S (S (S (S (_.19))))
-  x = S (S (S (S (S (O))))) y = S (S (S (S (S (_.21)))))
-  x = S (S (S (S (S (S (O)))))) y = S (S (S (S (S (S (_.23))))))
-  x = S (S (S (S (S (S (S (O))))))) y = S (S (S (S (S (S (S (_.25)))))))
-  x = S (S (S (S (S (S (S (S (O)))))))) y = S (S (S (S (S (S (S (S (_.27))))))))
-  x = S (S (S (S (S (S (S (S (S (O))))))))) y = S (S (S (S (S (S (S (S (S (_.29)))))))))
+  le false, 10 answers {
+  q=_.10 [=/= O]; r=O;
+  q=S (_.12 [=/= O]); r=S (O);
+  q=S (S (_.14 [=/= O])); r=S (S (O));
+  q=S (S (S (_.16 [=/= O]))); r=S (S (S (O)));
+  q=S (S (S (S (_.18 [=/= O])))); r=S (S (S (S (O))));
+  q=S (S (S (S (S (_.20 [=/= O]))))); r=S (S (S (S (S (O)))));
+  q=S (S (S (S (S (S (_.22 [=/= O])))))); r=S (S (S (S (S (S (O))))));
+  q=S (S (S (S (S (S (S (_.24 [=/= O]))))))); r=S (S (S (S (S (S (S (O)))))));
+  q=S (S (S (S (S (S (S (S (_.26 [=/= O])))))))); r=S (S (S (S (S (S (S (S (O))))))));
+  q=S (S (S (S (S (S (S (S (S (_.28 [=/= O]))))))))); r=S (S (S (S (S (S (S (S (S (O)))))))));
+  }
+  le true, 10 answers {
+  q=O; r=_.11;
+  q=S (O); r=S (_.13);
+  q=S (S (O)); r=S (S (_.15));
+  q=S (S (S (O))); r=S (S (S (_.17)));
+  q=S (S (S (S (O)))); r=S (S (S (S (_.19))));
+  q=S (S (S (S (S (O))))); r=S (S (S (S (S (_.21)))));
+  q=S (S (S (S (S (S (O)))))); r=S (S (S (S (S (S (_.23))))));
+  q=S (S (S (S (S (S (S (O))))))); r=S (S (S (S (S (S (S (_.25)))))));
+  q=S (S (S (S (S (S (S (S (O)))))))); r=S (S (S (S (S (S (S (S (_.27))))))));
+  q=S (S (S (S (S (S (S (S (S (O))))))))); r=S (S (S (S (S (S (S (S (S (_.29)))))))));
+  }
 

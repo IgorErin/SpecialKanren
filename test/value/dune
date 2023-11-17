@@ -8,18 +8,33 @@
   (:exec %{project_root}/bin/main.exe)
   %{cmo:../../samples/value})
  (target target.ml)
+ (mode
+  (promote (until-clean)))
  (action
-  (run
-   sh
-   -c
-   "%{exec} -cmt -par opt -fname value -o %{target} ../../samples/.Samples.objs/byte/value.cmt")))
+  (progn
+   (run
+    sh
+    -c
+    "%{exec} -cmt -par opt -fname value -o %{target} ../../samples/.Samples.objs/byte/value.cmt")
+   (run
+    sh
+    -c
+    "ocamlformat --enable-outside-detected-project -o %{target} ./%{target} "))))
 
 (executable
  (name run)
- (libraries GT OCanren)
- (modules run target))
+ (libraries GT OCanren OCanren.tester)
+ (modules run target)
+ (preprocess
+  (pps
+   OCanren-ppx.ppx_repr
+   OCanren-ppx.ppx_fresh
+   OCanren-ppx.ppx_distrib
+   -new-typenames
+   GT.ppx_all)))
 
 (cram
  (deps
   ./run.exe
+  target.ml
   (package SpecialKanren)))

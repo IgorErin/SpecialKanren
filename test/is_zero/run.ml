@@ -1,15 +1,11 @@
-(* module L = List
+module L = List
 open Target
 open GT
 open OCanren
 open OCanren.Std
+open Tester
 
-let _ =
-  let test f =
-    L.iter (fun x -> Printf.printf "x = %s\n%!" x)
-    @@ Stream.take ~n:10
-    @@ run q (fun x -> f x) (fun x -> show Nat.logic (x#reify Nat.reify))
-  in
-  test is_even_1false;
-  test is_even_1true
-;; *)
+let show_ans x = [%show: Nat.logic] () x
+let reify_ans x = Nat.reify x
+let () = run_r reify_ans show_ans 10 q qh ("is_zero false", fun q -> is_zero_true q)
+let () = run_r reify_ans show_ans 10 q qh ("is_zero true", fun q -> is_zero_false q)

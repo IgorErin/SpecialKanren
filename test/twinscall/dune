@@ -8,11 +8,18 @@
   (:exec %{project_root}/bin/main.exe)
   %{cmo:../../samples/twinscall})
  (target target.ml)
+ (mode
+  (promote (until-clean)))
  (action
-  (run
-   sh
-   -c
-   "%{exec} -cmt -par is -fname twins -o %{target} ../../samples/.Samples.objs/byte/twinscall.cmt")))
+  (progn
+   (run
+    sh
+    -c
+    "%{exec} -cmt -par is -fname twins -o %{target} ../../samples/.Samples.objs/byte/twinscall.cmt")
+   (run
+    sh
+    -c
+    "ocamlformat --enable-outside-detected-project -o %{target} ./%{target} "))))
 
 (executable
  (name target)
@@ -21,4 +28,5 @@
 
 (cram
  (deps
+  target.ml
   (package SpecialKanren)))

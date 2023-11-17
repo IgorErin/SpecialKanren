@@ -8,16 +8,18 @@
   (:exec %{project_root}/bin/main.exe)
   %{cmo:../../samples/id_external})
  (target target.ml)
+ (mode
+  (promote (until-clean)))
  (action
-  (run
-   sh
-   -c
-   "%{exec} -cmt -par flag -fname id -o %{target} ../../samples/.Samples.objs/byte/id_external.cmt")))
-
-(executable
- (name run)
- (libraries GT OCanren)
- (modules run target))
+  (progn
+   (run
+    sh
+    -c
+    "%{exec} -cmt -par flag -fname id -o %{target} ../../samples/.Samples.objs/byte/id_external.cmt")
+   (run
+    sh
+    -c
+    "ocamlformat --enable-outside-detected-project -o %{target} ./%{target} "))))
 
 (cram
- (deps ./run.exe))
+ (deps target.ml))

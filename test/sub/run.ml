@@ -3,33 +3,19 @@ open Target
 open GT
 open OCanren
 open OCanren.Std
+open Tester
 
-let show_nat x = show Nat.logic (x#reify Nat.reify)
+let show_ans x = [%show: Nat.logic] () x
+let reify_ans x = Nat.reify x
 
-let _ =
-  let test f =
-    L.iter (fun (x, y) -> Printf.printf "%s - %s < 0\n%!" x y)
-    @@ Stream.take ~n:10
-    @@ run
-         qr
-         (fun x y -> f x y)
-         (fun x y ->
-           show Nat.logic (x#reify Nat.reify), show Nat.logic (y#reify Nat.reify))
-  in
-  test sub_None
+let () =
+  run_r
+    reify_ans
+    show_ans
+    10
+    qrs
+    qrsh
+    ("le false", fun fst snd result -> sub_Some fst snd result)
 ;;
 
-let _ =
-  let test f =
-    L.iter (fun (x, y, z) -> Printf.printf "%s - %s = %s\n%!" x y z)
-    @@ Stream.take ~n:10
-    @@ run
-         qrs
-         (fun x y z -> f x y z)
-         (fun x y z ->
-           ( show Nat.logic (x#reify Nat.reify)
-           , show Nat.logic (y#reify Nat.reify)
-           , show Nat.logic (z#reify Nat.reify) ))
-  in
-  test sub_Some
-;;
+let () = run_r reify_ans show_ans 10 qr qrh ("le true", fun fst snd -> sub_None fst snd)

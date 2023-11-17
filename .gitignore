@@ -29,6 +29,9 @@ setup.log
 _opam/
 
 dump*
+# ingore test result. mb good-for-nothing name
+target.ml
+target_bench.ml
 
 #for now 
 Makefile

@@ -8,32 +8,53 @@
   (:exec %{project_root}/bin/main.exe)
   %{cmo:../../samples/is_even})
  (target target.ml)
+ (mode
+  (promote (until-clean)))
  (action
-  (run
-   sh
-   -c
-   "%{exec} -cmt -par res -fname is_even -o %{target} ../../samples/.Samples.objs/byte/is_even.cmt")))
+  (progn
+   (run
+    sh
+    -c
+    "%{exec} -cmt -par res -fname is_even -o %{target} ../../samples/.Samples.objs/byte/is_even.cmt")
+   (run
+    sh
+    -c
+    "ocamlformat --enable-outside-detected-project -o %{target} ./%{target} "))))
 
 (executable
  (name run)
- (libraries GT OCanren)
- (modules run target))
+ (libraries GT OCanren OCanren.tester)
+ (modules run target)
+ (preprocess
+  (pps
+   OCanren-ppx.ppx_repr
+   OCanren-ppx.ppx_fresh
+   OCanren-ppx.ppx_distrib
+   -new-typenames
+   GT.ppx_all)))
 
 (rule
  (deps
   (:exec %{project_root}/bin/main.exe)
   %{cmo:../../samples/is_even})
  (target target_bench.ml)
+ (mode
+  (promote (until-clean)))
  (action
-  (run
-   sh
-   -c
-   "%{exec} -cmt -par res -fname is_even -o %{target} ../../samples/.Samples.objs/byte/is_even.cmt")))
+  (progn
+   (run
+    sh
+    -c
+    "%{exec} -cmt -par res -fname is_even -o %{target} ../../samples/.Samples.objs/byte/is_even.cmt")
+   (run
+    sh
+    -c
+    "ocamlformat --enable-outside-detected-project -o %{target} ./%{target} "))))
 
 (executable
  (public_name is_even_bench)
  (name bench)
- (libraries GT OCanren core benchmark)
+ (libraries GT OCanren OCanren.tester core benchmark)
  (modules bench target_bench))
 
 (cram

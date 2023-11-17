@@ -1,25 +1,40 @@
 (env
  (_
   (flags
-   (:standard -rectypes -w -27-33-32-39))))
+   (:standard -rectypes -w -27-33-32-39-34))))
 
 (rule
  (deps
   (:exec %{project_root}/bin/main.exe)
   %{cmo:../../samples/forall})
  (target target.ml)
+ (mode
+  (promote (until-clean)))
  (action
-  (run
-   sh
-   -c
-   "%{exec} -cmt -par res -fname for_allo -o %{target} ../../samples/.Samples.objs/byte/forall.cmt")))
+  (progn
+   (run
+    sh
+    -c
+    "%{exec} -cmt -par res -fname for_allo -o %{target} ../../samples/.Samples.objs/byte/forall.cmt")
+   (run
+    sh
+    -c
+    "ocamlformat --enable-outside-detected-project -o %{target} ./%{target} "))))
 
 (executable
  (name run)
  (libraries GT OCanren)
- (modules run target))
+ (modules run target)
+ (preprocess
+  (pps
+   OCanren-ppx.ppx_repr
+   OCanren-ppx.ppx_fresh
+   OCanren-ppx.ppx_distrib
+   -new-typenames
+   GT.ppx_all)))
 
 (cram
  (deps
   ./run.exe
+  target.ml
   (package SpecialKanren)))

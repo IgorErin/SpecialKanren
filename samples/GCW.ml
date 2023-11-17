@@ -8,10 +8,10 @@ open OCanren.Std.List
     | C
     | W
     | N
-  [@@deriving gt ~options:{ gmap }]]
+  [@@deriving gt ~options:{ gmap; show }]]
 
 [%%distrib
-  type state = St of bool * bool * bool * bool [@@deriving gt ~options:{ gmap }]]
+  type state = St of bool * bool * bool * bool [@@deriving gt ~options:{ gmap; show }]]
 
 let checkState s q55 =
   fresh

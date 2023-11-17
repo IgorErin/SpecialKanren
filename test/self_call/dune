@@ -8,11 +8,18 @@
   (:exec %{project_root}/bin/main.exe)
   %{cmo:../../samples/self_call})
  (target target.ml)
+ (mode
+  (promote (until-clean)))
  (action
-  (run
-   sh
-   -c
-   "%{exec} -cmt -par is -fname self1 -o %{target} ../../samples/.Samples.objs/byte/self_call.cmt")))
+  (progn
+   (run
+    sh
+    -c
+    "%{exec} -cmt -par is -fname self1 -o %{target} ../../samples/.Samples.objs/byte/self_call.cmt")
+   (run
+    sh
+    -c
+    "ocamlformat --enable-outside-detected-project -o %{target} ./%{target} "))))
 
 (executable
  (name run)
@@ -22,4 +29,5 @@
 (cram
  (deps
   ./run.exe
+  target.ml
   (package SpecialKanren)))

@@ -8,16 +8,30 @@
   (:exec %{project_root}/bin/main.exe)
   %{cmo:../../samples/sub})
  (target target.ml)
+ (mode
+  (promote (until-clean)))
  (action
-  (run
-   sh
-   -c
-   "%{exec} -cmt -par z -fname sub -o %{target} ../../samples/.Samples.objs/byte/sub.cmt")))
+  (progn
+   (run
+    sh
+    -c
+    "%{exec} -cmt -par z -fname sub -o %{target} ../../samples/.Samples.objs/byte/sub.cmt")
+   (run
+    sh
+    -c
+    "ocamlformat --enable-outside-detected-project -o %{target} ./%{target} "))))
 
 (executable
  (name run)
- (libraries GT OCanren)
- (modules run target))
+ (libraries GT OCanren OCanren.tester)
+ (modules run target)
+ (preprocess
+  (pps
+   OCanren-ppx.ppx_repr
+   OCanren-ppx.ppx_fresh
+   OCanren-ppx.ppx_distrib
+   -new-typenames
+   GT.ppx_all)))
 
 (rule
  (deps
@@ -25,16 +39,28 @@
   %{cmo:../../samples/sub})
  (target target_bench.ml)
  (action
-  (run
-   sh
-   -c
-   "%{exec} -cmt -par z -fname sub -o %{target} ../../samples/.Samples.objs/byte/sub.cmt")))
+  (progn
+   (run
+    sh
+    -c
+    "%{exec} -cmt -par z -fname sub -o %{target} ../../samples/.Samples.objs/byte/sub.cmt")
+   (run
+    sh
+    -c
+    "ocamlformat --enable-outside-detected-project -o %{target} ./%{target} "))))
 
 (executable
  (public_name sub_bench)
  (name bench)
  (libraries GT OCanren benchmark base core)
- (modules bench target_bench))
+ (modules bench target_bench)
+ (preprocess
+  (pps
+   OCanren-ppx.ppx_repr
+   OCanren-ppx.ppx_fresh
+   OCanren-ppx.ppx_distrib
+   -new-typenames
+   GT.ppx_all)))
 
 (cram
  (deps

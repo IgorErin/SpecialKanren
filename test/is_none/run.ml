@@ -2,14 +2,22 @@ module L = List
 open Target
 open GT
 open OCanren
+open Tester
 open OCanren.Std
 
-let _ =
-  let test f =
-    L.iter (fun x -> Printf.printf "x = %s\n%!" x)
-    @@ Stream.take ~n:10
-    @@ run q (fun x -> f x) (fun x -> show Bool.logic (x#reify Bool.reify))
-  in
-  test is_none_None;
-  test @@ is_none_Some !!true
+let show_ans x = [%show: Bool.logic] () x
+let reify_ans x = Bool.reify x
+
+let () =
+  run_r reify_ans show_ans 10 q qh ("is none none", fun result -> is_none_None result)
+;;
+
+let () =
+  run_r
+    reify_ans
+    show_ans
+    10
+    q
+    qh
+    ("is none some ", fun is -> Fresh.one (fun x -> is_none_Some is x))
 ;;
