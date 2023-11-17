@@ -9,16 +9,28 @@ type ('a, 'b) result =
 module Utils = struct
   module IdentMap = Map.Make (Ident)
 
+  let equal_names fst snd = String.equal (Ident.name fst) (Ident.name snd)
+
   let mk_new_var_fun vars =
     let count = ref 0 in
     let rec result () =
       let new_name = Printf.sprintf "constarg%d" @@ !count in
       count := !count + 1;
       let ident = Ident.create_local new_name in
-      if List.exists (Ident.same ident) vars then result () else ident
+      if List.exists (equal_names ident) vars then result () else ident
     in
     result
   ;;
+
+  let mk_new_fresh_fun vars = 
+    let count = ref 0 in 
+    let rec result name =
+      let new_name = Printf.sprintf "%s_nf_%d" (Ident.name name) !count in 
+      count := !count + 1;
+      let ident = Ident.create_local new_name in 
+      if List.exists (equal_names ident) vars then result name else ident
+  in
+  result 
 
   let travers_unify_graph (cnj : _ cnj) =
     let info =
@@ -55,6 +67,15 @@ module Utils = struct
       name, result
     in
     names |> List.map get_values
+  ;;
+
+  let get_freshs list =
+    list
+    |> List.fold_left
+         (fun acc -> function
+           | DFresh freshs -> freshs :: acc
+           | _ -> acc)
+         []
   ;;
 end
 
@@ -131,6 +152,45 @@ module Passes = struct
       | x -> Some x)
     |> reduce_const_const
   ;;
+
+  let rename_fresh create_new_name conj =
+    let open Utils in 
+    let rec map_value map = function
+      | Var v -> Var (IdentMap.find_opt v map |> Option.value ~default:v)
+      | Constr (desc, values) ->
+        let values = List.map (map_value map) values in
+        Constr (desc, values)
+    in
+    conj
+    |> List.fold_left (fun (dnf, fresh_acc, map) ->
+      let return d = d :: dnf, fresh_acc, map in
+      function
+      | DFresh vars ->
+        let new_vars_pairs =
+          vars
+          |> List.filter (fun x -> List.exists (Utils.equal_names x) fresh_acc)
+          |> List.map (fun name -> name, create_new_name name)
+          |> List.to_seq
+        in
+        let new_map = IdentMap.add_seq new_vars_pairs map in
+        let vars =
+          List.map (fun x -> IdentMap.find_opt x new_map |> Option.value ~default:x) vars
+        in
+        DFresh vars :: dnf, vars @ fresh_acc, new_map
+      | DCall (name, values) -> return @@ DCall (name, List.map (map_value map) values)
+      | DUnify (left, right) -> return @@ DUnify (map_value map left, map_value map right)
+      | DDisunify (left, right) ->
+        return @@ DDisunify (map_value map left, map_value map right)) ([], [], IdentMap.empty)
+    |> fun (dnf, _, _) -> List.rev dnf 
+  ;;
+
+  let freshup global_vars conj =
+    let fresh = Utils.get_freshs conj |> List.concat in 
+    let create_new_name = Utils.mk_new_fresh_fun (global_vars @ fresh) in 
+    let conj = rename_fresh create_new_name conj in  
+    let fresh_in_order = Utils.get_freshs conj in 
+    let without_fresh = List.filter (fun x -> not @@ Dnf.is_fresh x) conj in 
+    DFresh (List.rev fresh_in_order |> List.concat) :: without_fresh
 end
 
 module Propagate = struct
@@ -285,17 +345,10 @@ module Reduce = struct
       conj
   ;;
 
-  let get_freshs list =
-    list
-    |> List.fold_left
-         (fun acc -> function
-           | DFresh freshs -> freshs @ acc
-           | _ -> acc)
-         []
-  ;;
+
 
   let try_reduce cnj =
-    let freshs = get_freshs cnj in
+    let freshs = Utils.get_freshs cnj |> List.concat in
     List.fold_left
       (fun cnj fresh -> if is_redudant fresh cnj then reduce fresh cnj else cnj)
       cnj
@@ -354,11 +407,16 @@ let run ~info ~freshs ~globals ~dnf =
       (fun acc (par, const, const_vars) -> run_per_const par const const_vars acc)
       dnf
       consts_info
+    (* freshup *)
+    |> List.map (Passes.to_value_value)
+    |> List.map (Passes.freshup globals)
+    |> List.filter_map (Passes.reduce_const_const)
+    (*propagate *)
     |> List.filter_map (Propagate.run is_global)
     |> List.filter_map Passes.clean_taut
+    (* reduce *)
     |> List.map Reduce.try_reduce
     |> List.map Reduce.remove_empty_fresh
-    |> List.map fuse_fresh
   in
   { dnf = result; globals }
 ;;
