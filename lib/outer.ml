@@ -3,7 +3,7 @@ open Typedtree
 type ('a, 'b) raw_fun =
   { out_name : Ident.t
   ; out_globals : Ident.t list
-  ; out_body : ('a, 'b) Canren.canren
+  ; out_body : Canren.canren
   }
 
 let get_funs str =

@@ -1,13 +1,12 @@
 open Ocanren_patterns
-open Value
 
-type ('a, 'b) canren =
+type canren =
   | Call of Path.t * Value.t list
-  | Fresh of Ident.t list * ('a, 'b) canren
-  | Unify of 'a * 'b
-  | Disunify of 'a * 'b
-  | Disj of ('a, 'b) canren * ('a, 'b) canren
-  | Conj of ('a, 'b) canren * ('a, 'b) canren
+  | Fresh of Ident.t list * canren
+  | Unify of Value.t * Value.t
+  | Disunify of Value.t * Value.t
+  | Disj of canren * canren
+  | Conj of canren * canren
 
 let disj fst snd = Disj (fst, snd)
 let conj fst snd = Conj (fst, snd)
