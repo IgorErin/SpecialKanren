@@ -24,6 +24,8 @@
   ocamlfind
   GT
   (OCanren (>= "0.3.0~"))
+  (OCanren-ppx
+   (>= "0.3.0~"))
   (ocamlformat
    (and
     (>= "0.26")
