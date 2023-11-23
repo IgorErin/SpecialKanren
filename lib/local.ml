@@ -106,7 +106,8 @@ module Passes = struct
   ;;
 
   let subst_const (is_par : Ident.t -> bool) const vars dnf =
-    let new_const = Constr (const#desc, List.map (fun v -> Var v) vars) in
+    let module PV = Predicate.Var in
+    let new_const = Constr (PV.desc const, List.map (fun v -> Var v) vars) in
     (* ad hoc substitution TODO () *)
     let map_unify left right =
       match left, right with
@@ -370,7 +371,8 @@ module Reduce = struct
 end
 
 let run_per_const par const const_vars dnf =
-  let dnf = List.map (Passes.subst_const par#by_ident const const_vars) dnf in
+  let module PPI = Predicate.Par.Id in
+  let dnf = List.map (Passes.subst_const (PPI.by_ident par) const const_vars) dnf in
   let dnf = dnf |> List.filter_map Passes.reduce_const_const in
   dnf
 ;;
@@ -395,14 +397,19 @@ let run ~info ~freshs ~globals ~dnf =
   let consts_info =
     List.map
       (fun (pat, const) ->
-        let const_vars = List.init const#arity (fun _ -> new_var ()) in
+        let module PV = Predicate.Var in
+        let const_vars = List.init (PV.arity const) (fun _ -> new_var ()) in
         pat, const, const_vars)
       info
   in
   let globals =
     globals
     |> List.concat_map (fun glob ->
-      List.find_opt (fun (par, _, _) -> par#by_ident glob) consts_info
+      List.find_opt
+        (fun (par, _, _) ->
+          let module PPI = Predicate.Par.Id in
+          PPI.by_ident par glob)
+        consts_info
       |> function
       | Some (_, _, vars) -> vars
       | None -> glob |> Core.List.return)

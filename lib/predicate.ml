@@ -1,15 +1,56 @@
 module Helpers = struct
-  let exp_by_ident id e =
-    let open Patterns in
-    let open Gen in
-    let path_pattern = PathPat.pident id in
-    let exp_desc = Expression_desc.texp_ident path_pattern drop drop in
-    let p = expression exp_desc drop drop drop drop drop in
-    parse_bool p e
-  ;;
+  let string_ident_equal str ident = String.equal str @@ Ident.name ident
 end
 
-let par_of_string name =
+module Par = struct
+  module Str = struct
+    type t = string
+
+    let of_string x = x
+    let by_ident = Helpers.string_ident_equal
+  end
+
+  module Id = struct
+    type t =
+      { ident : Ident.t
+      ; number : int
+      }
+
+    let of_ident ~id ~n = { ident = id; number = n }
+    let by_ident { ident; _ } = Ident.same ident
+    let ident { ident; _ } = ident
+    let number { number; _ } = number
+  end
+end
+
+module Fun = struct
+  module Str = struct
+    type t = string
+
+    let of_string x = x
+    let by_ident = Helpers.string_ident_equal
+  end
+
+  module Id = struct
+    type t = Ident.t
+
+    let of_ident x = x
+    let name = Ident.name
+    let by_ident = Ident.same
+    let ident x = x
+  end
+end
+
+module Var = struct
+  type const = Types.constructor_description
+  type t = { current : const }
+
+  let create ~cur = { current = cur }
+  let desc { current; _ } = current
+  let arity { current; _ } = current.cstr_arity
+end
+
+(* let par_of_string name =
   object
     method by_ident x = String.equal name @@ Ident.name x
   end
@@ -65,7 +106,7 @@ let fun_of_string name =
       let id = Patterns.ident name in
       let pat_desc = Pattern_desc.tpat_var id drop in
       let pat_data = Patterns.pattern_data pat_desc drop drop drop drop drop in
-      parse_bool pat_data
+      (parse_bool pat_data : Typedtree.pattern -> bool)
   end
 ;;
 
@@ -85,4 +126,4 @@ let fun_of_ident id =
     method exp e = Helpers.exp_by_ident id e
     method name = Ident.name id
   end
-;;
+;; *)

@@ -62,8 +62,8 @@ let () =
   let fname = Config.fname () in
   let out = Config.get_out () in
   if Config.verbose () then Printf.printf "path: %s\npar: %s\nfname: %s%!" path par fname;
-  let parp = Predicate.par_of_string par in
-  let funp = Predicate.fun_of_string fname in
+  let parp = Predicate.Par.Str.of_string par in
+  let funp = Predicate.Fun.Str.of_string fname in
   let ff = Config.ff () in
   try
     let items =
