@@ -37,9 +37,9 @@ module Utils = struct
     let info =
       List.map
         (function
-         | DUnify (ident, Var v) -> [ ident, Var v; v, Var ident ]
-         | DUnify (ident, (Constr _ as c)) -> [ ident, c ]
-         | _ -> [])
+          | DUnify (ident, Var v) -> [ ident, Var v; v, Var ident ]
+          | DUnify (ident, (Constr _ as c)) -> [ ident, c ]
+          | _ -> [])
         cnj
       |> List.concat
     in
@@ -312,10 +312,10 @@ module Reduce = struct
     in
     List.exists
       (function
-       | DDisunify (_, Constr (_, values))
-       | DUnify (_, Constr (_, values))
-       | DCall (_, values) -> List.exists used_value values
-       | _ -> false)
+        | DDisunify (_, Constr (_, values))
+        | DUnify (_, Constr (_, values))
+        | DCall (_, values) -> List.exists used_value values
+        | _ -> false)
       conj
   ;;
 
@@ -343,13 +343,13 @@ module Reduce = struct
     let same = Ident.same ident in
     List.filter_map
       (function
-       | DUnify (id, Var v) when same id || same v -> None
-       | DDisunify (id, Var v) when same id || same v -> None
-       | DUnify (id, Constr _) when same id -> None
-       | DDisunify (id, Constr _) when same id -> None
-       | DFresh freshs ->
-         Option.some @@ DFresh (List.filter (fun x -> x |> same |> not) freshs)
-       | x -> Some x)
+        | DUnify (id, Var v) when same id || same v -> None
+        | DDisunify (id, Var v) when same id || same v -> None
+        | DUnify (id, Constr _) when same id -> None
+        | DDisunify (id, Constr _) when same id -> None
+        | DFresh freshs ->
+          Option.some @@ DFresh (List.filter (fun x -> x |> same |> not) freshs)
+        | x -> Some x)
       conj
   ;;
 

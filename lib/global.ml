@@ -46,9 +46,10 @@ let fetch is_par conj =
     | DCall (f_path, args) as call ->
       let consts =
         args
-        |> List.mapi (fun index -> function
-          | Constr (desc, _) -> Some (index, desc)
-          | Var _ -> None)
+        |> List.mapi (fun index ->
+             function
+             | Constr (desc, _) -> Some (index, desc)
+             | Var _ -> None)
         |> List.filter_map (fun x -> x)
       in
       if Core.List.is_empty consts || (is_par @@ Path.head f_path)
@@ -57,8 +58,8 @@ let fetch is_par conj =
         let hargs =
           List.concat_map
             (function
-             | Constr (_, values) -> values
-             | x -> [ x ])
+              | Constr (_, values) -> values
+              | x -> [ x ])
             args
         in
         let href = ref None in
@@ -162,7 +163,10 @@ let closer step source =
   loop init deps
 ;;
 
-let run (source : fun_info list) get create_info =
+let run (source : fun_info list) (get : Ident.t -> Outer.raw_fun) create_info =
+  let get x =
+    get x |> Outer.(fun { out_body; out_globals; _ } -> out_globals, out_body)
+  in
   let step = step get create_info in
   closer step source
 ;;

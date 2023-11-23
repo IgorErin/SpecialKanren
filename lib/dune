@@ -14,7 +14,8 @@
   Dnf
   Global
   Value
-  Dnf_past)
+  Dnf_past
+  translate)
  (name SpecialKanren)
  (preprocess
   (pps ppxlib.metaquot ppx_optcomp)))

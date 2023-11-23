@@ -33,10 +33,10 @@ let read_cmt path =
 
 let read_ml input_name =
   Clflags.include_dirs
-    := List.concat
-         [ Utils.get_std_lib_pathes (); Config.include_dirs (); !Clflags.include_dirs ];
+  := List.concat
+       [ Utils.get_std_lib_pathes (); Config.include_dirs (); !Clflags.include_dirs ];
   Clflags.open_modules
-    := List.concat [ Utils.std_opens; Config.opens (); !Clflags.open_modules ];
+  := List.concat [ Utils.std_opens; Config.opens (); !Clflags.open_modules ];
   Compmisc.init_path ();
   let outputprefix = Compenv.output_prefix input_name in
   let modulename = Compenv.module_of_filename input_name outputprefix in
@@ -70,10 +70,10 @@ let () =
       match ff with
       | Ml ->
         let str = read_ml path in
-        SpecialKanren.Outer.translate funp parp str
+        SpecialKanren.Translate.translate funp parp str
       | Cmt ->
         let str = read_cmt path in
-        SpecialKanren.Outer.translate funp parp str
+        SpecialKanren.Translate.translate funp parp str
     in
     match out with
     | Some output_name ->

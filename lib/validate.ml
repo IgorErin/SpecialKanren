@@ -49,8 +49,8 @@ let function_check funp parp (t : Typedtree.structure) =
        let funp = Predicate.fun_of_ident ident in
        parameter_check parp t.str_final_env vb.vb_expr
        |> (function
-       | Some (parp, variants) -> vb.vb_expr, funp, parp, variants
-       | None -> raise Par_not_found)
+        | Some (parp, variants) -> vb.vb_expr, funp, parp, variants
+        | None -> raise Par_not_found)
      | _ :: _ -> raise @@ Not_implemented "Only non mutually recursive funtions supported")
   | _ :: _ -> raise MT1_fun_found
 ;;
