@@ -55,3 +55,14 @@ let pp f pfst psnd =
           Format.fprintf f ")")
       l)
 ;;
+
+let get_freshs ls =
+  ls
+  |> List.concat_map (fun ls ->
+    ls
+    |> List.fold_left
+         (fun acc -> function
+           | DFresh ls -> ls @ acc
+           | _ -> acc)
+         [])
+;;

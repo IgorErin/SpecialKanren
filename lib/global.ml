@@ -114,14 +114,14 @@ let create_name source_info =
   Ident.name source_info.fname ^ "_" ^ postfix
 ;;
 
-let step get create_info { fname; consts } =
-  let globals, canren = get fname in
-  let freshs = Canren.get_declared_fresh_vars canren in
+let step (src : Outer.t) create_info { fname; consts } =
+  let Fun.{ params = globals; body = canren; _ } = Outer.find ~src ~name:fname in
   let info = create_info globals consts in
-  let dnf = Dnf.of_canren canren in
-  let Local.{ dnf; globals } = Local.run ~info ~freshs ~globals ~dnf in
-  let res_dnf, res_deps = dnf |> process globals in
-  { res_dnf; res_deps; res_info = { fname; consts }; res_globals = globals }
+  let body = Dnf.of_canren canren in
+  let func = Fun.{ body; name = fname; params = globals } in
+  let Fun.{ body; params; _ } = Local.run ~info ~func in
+  let res_dnf, res_deps = body |> process globals in
+  { res_dnf; res_deps; res_info = { fname; consts }; res_globals = params }
 ;;
 
 let closer step source =
@@ -163,10 +163,18 @@ let closer step source =
   loop init deps
 ;;
 
-let run (source : fun_info list) (get : Ident.t -> Outer.raw_fun) create_info =
-  let get x =
-    get x |> Outer.(fun { out_body; out_globals; _ } -> out_globals, out_body)
-  in
-  let step = step get create_info in
-  closer step source
+let info_of_consts globals consts =
+  consts
+  |> List.map (fun (number, (const_desc : Types.constructor_description)) ->
+    List.nth_opt globals number
+    |> Core.Option.value_or_thunk ~default:(fun () -> Sexn.outer "Type_mismatch")
+    |> fun ident ->
+    let parp = Predicate.Par.Id.of_ident ~id:ident ~n:number in
+    let varp = Predicate.Var.create ~cur:const_desc in
+    parp, varp)
+;;
+
+let run ~(tgt : fun_info list) ~(src : Outer.t) =
+  let step = step src info_of_consts in
+  closer step tgt
 ;;

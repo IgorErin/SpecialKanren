@@ -1,12 +1,6 @@
 open Typedtree
 
-type raw_fun =
-  { out_name : Ident.t
-  ; out_globals : Ident.t list
-  ; out_body : Canren.canren
-  }
-
-type t = { funs : raw_fun list }
+type t = { funs : Canren.canren Fun.t list }
 
 let get_funs { funs } = funs
 
@@ -20,20 +14,20 @@ let of_str str =
   |> List.concat
   |> List.filter_map (fun vb ->
     match vb.vb_pat.pat_desc with
-    | Tpat_var (out_name, _) ->
-      let out_globals, canren = Canren.of_tast vb.vb_expr in
-      let out_body =
+    | Tpat_var (name, _) ->
+      let params, canren = Canren.of_tast vb.vb_expr in
+      let body =
         canren |> Core.Option.value_or_thunk ~default:(fun () -> failwith "Canren fail")
       in
-      Some { out_globals; out_name; out_body }
+      Some Fun.{ params; name; body }
     | _ -> None)
   |> fun funs -> { funs }
 ;;
 
-let find ~src ~name =
+let find ~src ~name:src_name =
   src
   |> get_funs
-  |> List.find_opt (fun { out_name; _ } -> Ident.same name out_name)
+  |> List.find_opt (fun Fun.{ name; _ } -> Ident.same src_name name)
   |> Core.Option.value_or_thunk ~default:(fun () ->
-    Sexn.outer @@ Printf.sprintf "not found: %s" (Ident.name name))
+    Sexn.outer @@ Printf.sprintf "not found: %s" (Ident.name src_name))
 ;;

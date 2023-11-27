@@ -1,11 +1,6 @@
 open Value
 open Dnf
 
-type ('a, 'b) result =
-  { globals : Ident.t list
-  ; dnf : ('a, 'b) dnf
-  }
-
 module Utils = struct
   module IdentMap = Map.Make (Ident)
 
@@ -391,9 +386,18 @@ let fuse_fresh conj =
   |> List.rev
 ;;
 
-let run ~info ~freshs ~globals ~dnf =
-  let new_var = Utils.mk_new_var_fun (globals @ freshs) in
-  let dnf = dnf |> List.map Passes.reduce_const_const |> List.filter_map (fun x -> x) in
+(* accept
+   spec info
+
+   return
+   spec function
+*)
+let run ~info ~func =
+  let dnf = func.Fun.body in
+  let new_var =
+    let freshs = Dnf.get_freshs func.body in
+    Utils.mk_new_var_fun (func.params @ freshs)
+  in
   let consts_info =
     List.map
       (fun (pat, const) ->
@@ -402,8 +406,8 @@ let run ~info ~freshs ~globals ~dnf =
         pat, const, const_vars)
       info
   in
-  let globals =
-    globals
+  let params =
+    func.params
     |> List.concat_map (fun glob ->
       List.find_opt
         (fun (par, _, _) ->
@@ -415,14 +419,15 @@ let run ~info ~freshs ~globals ~dnf =
       | None -> glob |> Core.List.return)
   in
   let result =
-    let is_global x = List.exists (Ident.same x) globals in
+    let dnf = dnf |> List.map Passes.reduce_const_const |> List.filter_map (fun x -> x) in
+    let is_global x = List.exists (Ident.same x) params in
     List.fold_left
       (fun acc (par, const, const_vars) -> run_per_const par const const_vars acc)
       dnf
       consts_info
     (* freshup *)
     |> List.map Passes.to_value_value
-    |> List.map (Passes.freshup globals)
+    |> List.map (Passes.freshup params)
     |> List.filter_map Passes.reduce_const_const
     (*propagate *)
     |> List.filter_map (Propagate.run is_global)
@@ -431,5 +436,5 @@ let run ~info ~freshs ~globals ~dnf =
     |> List.map Reduce.try_reduce
     |> List.map Reduce.remove_empty_fresh
   in
-  { dnf = result; globals }
+  Fun.{ func with body = result; params }
 ;;

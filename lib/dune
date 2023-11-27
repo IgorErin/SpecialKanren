@@ -15,6 +15,7 @@
   Global
   Value
   Dnf_past
+  fun
   translate)
  (name SpecialKanren)
  (preprocess
