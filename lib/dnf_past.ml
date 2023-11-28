@@ -104,12 +104,12 @@ end
 
 let past_of_conj conj =
   let to_past_unify ident value =
-    let left = Prim.exp_of_ident ident in
+    let left = Prim.exp_of_value ident in
     let right = Prim.exp_of_value value in
     Prim.create_unify left right
   in
   let to_past_disunify ident value =
-    let left = Prim.exp_of_ident ident in
+    let left = Prim.exp_of_value ident in
     let right = Prim.exp_of_value value in
     Prim.create_disunify left right
   in
@@ -156,15 +156,12 @@ let past_of_dnf dnf =
   |> Core.Option.value ~default:Prim.reduced
 ;;
 
-let create_var source_info =
-  Global.create_name source_info |> Location.mknoloc |> Ast_helper.Pat.var
+let create_var name = name |> Ident.name |> Location.mknoloc |> Ast_helper.Pat.var
+
+let create_vb Fun.{ name; params; body } =
+  let body = past_of_dnf body in
+  let f = Prim.create_fun_closer params body in
+  Vb.mk (create_var name) f
 ;;
 
-let create_vb Global.{ res_info; res_globals; res_dnf; _ } =
-  let dnf = Global.to_dnf res_dnf in
-  let body = past_of_dnf dnf in
-  let f = Prim.create_fun_closer res_globals body in
-  Vb.mk (create_var res_info) f
-;;
-
-let run ls = List.map create_vb ls |> Ast_helper.Str.value Recursive
+let run ls = ls |> List.map create_vb |> Ast_helper.Str.value Recursive

@@ -11,15 +11,13 @@ module Par = struct
   end
 
   module Id = struct
-    type t =
-      { ident : Ident.t
-      ; number : int
-      }
+    type t = { ident : Ident.t }
 
-    let of_ident ~id ~n = { ident = id; number = n }
+    let of_ident ~id = { ident = id }
     let by_ident { ident; _ } = Ident.same ident
     let ident { ident; _ } = ident
-    let number { number; _ } = number
+    let equal fst snd = Ident.same fst.ident snd.ident
+    let name { ident } = Ident.name ident
   end
 end
 
@@ -48,4 +46,6 @@ module Var = struct
   let create ~cur = { current = cur }
   let desc { current; _ } = current
   let arity { current; _ } = current.cstr_arity
+  let equal fst snd = Types.equal_tag fst.current.cstr_tag snd.current.cstr_tag
+  let name { current } = current.cstr_name
 end

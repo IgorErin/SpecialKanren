@@ -6,6 +6,7 @@
   Local
   Patterns
   Outer
+  spec
   Ocanren_patterns
   Predicate
   Typespat

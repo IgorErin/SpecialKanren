@@ -1,144 +1,121 @@
-open Dnf
-open Value
+type value_dnf = (Value.t, Value.t) Dnf.dnf
+type value_dnf_item = (Value.t, Value.t) Dnf.item
+type fcall = Path.t * Value.t list
+type hole_ref = fcall option ref
 
-type fun_hole = (string * Value.t list) option
-type spec_info = (int * Types.constructor_description) list
+type node =
+  | Node of value_dnf_item
+  | Hole of (fcall * hole_ref)
 
-type fun_info =
-  { fname : Ident.t
-  ; consts : spec_info
-  }
+type raw_dnf = node list list
+type gdnf = node list list
 
-type hole_info =
-  { hfinfo : fun_info
-  ; href : fun_hole ref
-  ; hargs : Value.t list
-  }
-
-type ('a, 'b) item =
-  | Node of 'a
-  | Hole of 'b option ref
-
-type ('a, 'b) conj = ('a, 'b) item list
-type ('a, 'b) dnf = ('a, 'b) conj list
-
-type ('a, 'b) t =
-  { res_info : fun_info
-  ; res_dnf : ('a, 'b) dnf
-  ; res_deps : hole_info list
-  ; res_globals : Ident.t list
-  }
-
-let equal fst snd =
-  let consts_same =
-    List.length fst.consts = List.length snd.consts
-    && List.for_all2
-         (fun (fi, fc) (si, sc) ->
-           Int.equal fi si && Types.(equal_tag fc.cstr_tag sc.cstr_tag))
-         fst.consts
-         snd.consts
+let trans sfunc =
+  let body = sfunc.Fun.func.body in
+  let open Dnf in
+  let loop = function
+    | DCall (name, args) ->
+      let r = ref None in
+      let call = name, args in
+      Hole (call, r)
+    | x -> Node x
   in
-  Ident.same fst.fname snd.fname && consts_same
-;;
-
-let fetch is_par conj =
-  let get = function
-    | DCall (f_path, args) as call ->
-      let consts =
-        args
-        |> List.mapi (fun index ->
-             function
-             | Constr (desc, _) -> Some (index, desc)
-             | Var _ -> None)
-        |> List.filter_map (fun x -> x)
-      in
-      if Core.List.is_empty consts || (is_par @@ Path.head f_path)
-      then Node call, None
-      else (
-        let hargs =
-          List.concat_map
-            (function
-              | Constr (_, values) -> values
-              | x -> [ x ])
-            args
-        in
-        let href = ref None in
-        let hfinfo = { fname = Path.head f_path; consts } in
-        Hole href, Some { href; hfinfo; hargs })
-    | x -> Node x, None
-  in
-  let fdnf, funs = List.map get conj |> Core.List.unzip in
-  let funs = List.filter_map (fun x -> x) funs in
-  fdnf, funs
-;;
-
-let process globals dnf : _ dnf * hole_info list =
-  let is_par ident = List.exists (Ident.same ident) globals in
-  let dnf, funs = List.map (fetch is_par) dnf |> Core.List.unzip in
-  let funs = List.concat funs in
-  dnf, funs
-;;
-
-let get a = !a |> Core.Option.value_or_thunk ~default:(fun () -> failwith "Hole")
-
-let pp f =
-  let pfst f ident = Format.fprintf f "%s" @@ Ident.name ident in
-  let psnd f value = Format.fprintf f "%s" @@ Value.to_string value in
-  List.iter (fun l ->
-    Format.printf "\n new disj \n";
-    List.iter
-      (fun x ->
-        Format.printf " && ";
-        match x with
-        | Node item -> Dnf.pp f pfst psnd item
-        | Hole a -> get a |> Dnf.pp f pfst psnd)
-      l)
+  let body = body |> List.map @@ List.map loop in
+  { sfunc with func = { sfunc.func with body } }
 ;;
 
 let to_dnf dnf =
-  let hole_to_dnf (fst, values) = DCall (Path.Pident (Ident.create_local fst), values) in
+  let get a = !a |> Core.Option.value_or_thunk ~default:(fun () -> failwith "Hole") in
+  let open Dnf in
+  let hole_to_dnf (name, values) = DCall (name, values) in
   let item = function
     | Node x -> x
-    | Hole x -> get x |> hole_to_dnf
+    | Hole (_, h) -> get h |> hole_to_dnf
   in
   List.map (fun cnj -> List.map item cnj) dnf
 ;;
 
-let create_name source_info =
+let create_name Fun.{ func; spec } =
+  let module P = Predicate in
   let postfix =
-    source_info.consts
-    |> List.map (fun (number, (x : Types.constructor_description)) ->
-      Int.to_string number ^ x.cstr_name)
+    spec
+    |> List.map (fun Spec.{ var; par } -> P.Var.name var ^ P.Par.Id.name par)
     |> String.concat "_"
   in
-  Ident.name source_info.fname ^ "_" ^ postfix
+  Ident.name func.name ^ "_" ^ postfix
 ;;
 
-let step (src : Outer.t) create_info { fname; consts } =
-  let Fun.{ params = globals; body = canren; _ } = Outer.find ~src ~name:fname in
-  let info = create_info globals consts in
-  let body = Dnf.of_canren canren in
-  let func = Fun.{ body; name = fname; params = globals } in
-  let Fun.{ body; params; _ } = Local.run ~info ~func in
-  let res_dnf, res_deps = body |> process globals in
-  { res_dnf; res_deps; res_info = { fname; consts }; res_globals = params }
+module Deps = struct
+  type t =
+    { func : Canren.canren Fun.to_spec
+    ; href : hole_ref
+    ; args : Value.t list
+    }
+
+  let unwrap_arg args =
+    let map =
+      let open Value in
+      function
+      | Var v -> Var v |> Core.List.return
+      | Constr (_, args) -> args
+    in
+    List.concat_map map args
+  ;;
+
+  let collect ~src =
+    let create_spec args params =
+      assert (List.length args = List.length params);
+      List.map2
+        (fun arg par ->
+          arg
+          |> Value.constr_get_opt
+          |> Option.map (fun (desc, _) ->
+            let par = Predicate.Par.Id.of_ident ~id:par in
+            let var = Predicate.Var.create ~cur:desc in
+            Spec.{ par; var }))
+        args
+        params
+      |> List.filter_map (fun x -> x)
+    in
+    let fetch = function
+      | Hole ((path, args), r) ->
+        let name = Path.head path in
+        let func = Outer.find ~src ~name in
+        let spec = create_spec args func.params in
+        let args = unwrap_arg args in
+        let func = Fun.{ func; spec } in
+        Some { func; href = r; args }
+      | _ -> None
+    in
+    List.concat_map @@ List.filter_map fetch
+  ;;
+
+  let get ~src ~body = body |> collect ~src
+end
+
+let step ~func =
+  let fun_to_spec = Fun.canren_to_dnf func in
+  let func = Local.run ~info:fun_to_spec |> trans in
+  let name = Ident.create_local @@ create_name func in
+  Fun.chname ~f:func ~name
 ;;
 
-let closer step source =
-  let set_call_self { href; hfinfo; hargs; _ } =
-    href := Some (create_name hfinfo, hargs)
+let closer ~src ~tgt =
+  let set_call_self Deps.{ func; href; args } =
+    let name = create_name func in
+    let path = Path.Pident (Ident.create_local name) in
+    href := Some (path, args)
   in
-  let try_set acc hole =
-    List.find_opt (fun item -> equal hole.hfinfo item.res_info) acc
+  let try_set acc dep =
+    List.find_opt (fun item -> Fun.equal dep.Deps.func item) acc
     |> function
     | Some _ ->
-      set_call_self hole;
+      set_call_self dep;
       None
-    | _ -> Some hole
+    | _ -> Some dep
   in
-  let filter acc deps =
-    deps |> List.filter_map (fun (hole : hole_info) -> try_set acc hole)
-  in
+  let filter acc deps = deps |> List.filter_map (fun hole -> try_set acc hole) in
+  let step x = step ~func:x in
   let rec loop acc deps =
     let deps = filter acc deps in
     let acc, deps =
@@ -148,9 +125,11 @@ let closer step source =
             new_dep
             |> try_set items
             |> Option.to_list
-            |> List.map (fun h -> step h.hfinfo)
+            |> List.map (fun h -> step h.Deps.func)
           in
-          let new_deps = new_items |> List.concat_map (fun res -> res.res_deps) in
+          let new_deps =
+            new_items |> List.concat_map (fun x -> Deps.get ~src ~body:x.Fun.func.body)
+          in
           new_items @ items, new_deps @ deps)
         (acc, deps)
         deps
@@ -158,23 +137,13 @@ let closer step source =
     let deps = filter acc deps in
     if Core.List.is_empty deps then acc else loop acc deps
   in
-  let init = List.map step source in
-  let deps = init |> List.concat_map (fun res -> res.res_deps) in
+  let init = List.map step tgt in
+  let deps = init |> List.concat_map (fun res -> Deps.get ~src ~body:res.Fun.func.body) in
   loop init deps
 ;;
 
-let info_of_consts globals consts =
-  consts
-  |> List.map (fun (number, (const_desc : Types.constructor_description)) ->
-    List.nth_opt globals number
-    |> Core.Option.value_or_thunk ~default:(fun () -> Sexn.outer "Type_mismatch")
-    |> fun ident ->
-    let parp = Predicate.Par.Id.of_ident ~id:ident ~n:number in
-    let varp = Predicate.Var.create ~cur:const_desc in
-    parp, varp)
-;;
+let get a = !a |> Core.Option.value_or_thunk ~default:(fun () -> failwith "Hole")
 
-let run ~(tgt : fun_info list) ~(src : Outer.t) =
-  let step = step src info_of_consts in
-  closer step tgt
+let run ~(src : Outer.t) ~(targets : Canren.canren Fun.to_spec list) =
+  closer ~src ~tgt:targets |> List.map (Fun.map ~f:to_dnf)
 ;;

@@ -1,14 +1,16 @@
 let run funp parp variants str =
+  let module P = Predicate in
   let src = Outer.of_str str in
-  let tgt =
+  let name = P.Fun.Id.ident funp in
+  let func = Outer.find ~src ~name in
+  let targets =
     variants
     |> List.map (fun var ->
-      Global.
-        { fname = Predicate.Fun.Id.ident funp
-        ; consts = [ Predicate.Par.Id.number parp, var ]
-        })
+      let var = P.Var.create ~cur:var in
+      let spec = [ Spec.{ var; par = parp } ] in
+      Fun.{ spec; func })
   in
-  Global.run ~src ~tgt
+  Global.run ~src ~targets
 ;;
 
 let translate funp parp (t : Typedtree.structure) =
@@ -17,7 +19,7 @@ let translate funp parp (t : Typedtree.structure) =
     let par_by_ident = Predicate.Par.Str.by_ident parp in
     Validate.function_check fun_by_ident par_by_ident t
   in
-  let result = run funp parp variants t in
+  let result = run funp parp variants t |> List.map (fun Fun.{ func; _ } -> func) in
   let pstr = Untypeast.untype_structure t in
   let str = Dnf_past.run result in
   pstr @ [ str ]

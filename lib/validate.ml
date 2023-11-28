@@ -24,7 +24,7 @@ let parameter_check parp env str =
     | Texp_function { param; cases = [ { c_rhs; c_lhs; _ } ]; _ } ->
       if parp param
       then (
-        let parp = Predicate.Par.Id.of_ident ~id:param ~n:count in
+        let parp = Predicate.Par.Id.of_ident ~id:param in
         let variants = Typespat.get_cons c_lhs.pat_type env in
         Some (parp, variants))
       else loop (count + 1) c_rhs

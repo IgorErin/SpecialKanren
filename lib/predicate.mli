@@ -9,10 +9,11 @@ module Par : sig
   module Id : sig
     type t
 
-    val of_ident : id:Ident.t -> n:int -> t
+    val of_ident : id:Ident.t -> t
     val by_ident : t -> Ident.t -> bool
     val ident : t -> Ident.t
-    val number : t -> int
+    val equal : t -> t -> bool
+    val name : t -> string
   end
 end
 
@@ -42,4 +43,6 @@ module Var : sig
   val create : cur:const -> t
   val desc : t -> const
   val arity : t -> int
+  val equal : t -> t -> bool
+  val name : t -> string
 end

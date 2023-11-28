@@ -386,13 +386,8 @@ let fuse_fresh conj =
   |> List.rev
 ;;
 
-(* accept
-   spec info
-
-   return
-   spec function
-*)
-let run ~info ~func =
+let run ~(info : _ Fun.to_spec) =
+  let func = info.func in
   let dnf = func.Fun.body in
   let new_var =
     let freshs = Dnf.get_freshs func.body in
@@ -400,11 +395,11 @@ let run ~info ~func =
   in
   let consts_info =
     List.map
-      (fun (pat, const) ->
+      (fun Spec.{ par; var } ->
         let module PV = Predicate.Var in
-        let const_vars = List.init (PV.arity const) (fun _ -> new_var ()) in
-        pat, const, const_vars)
-      info
+        let const_vars = List.init (PV.arity var) (fun _ -> new_var ()) in
+        par, var, const_vars)
+      info.spec
   in
   let params =
     func.params
@@ -435,6 +430,8 @@ let run ~info ~func =
     (* reduce *)
     |> List.map Reduce.try_reduce
     |> List.map Reduce.remove_empty_fresh
+    |> List.map Passes.to_value_value
   in
-  Fun.{ func with body = result; params }
+  let func = Fun.{ func with body = result; params } in
+  Fun.{ func; spec = info.spec }
 ;;
