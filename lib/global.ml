@@ -11,17 +11,24 @@ type raw_dnf = node list list
 type gdnf = node list list
 
 let trans sfunc =
-  let body = sfunc.Fun.func.body in
-  let open Dnf in
-  let loop = function
-    | DCall (name, args) ->
-      let r = ref None in
-      let call = name, args in
-      Hole (call, r)
-    | x -> Node x
+  let is_par x =
+    let id = Path.head x in
+    List.exists (Ident.same id) sfunc.Fun.func.params
   in
-  let body = body |> List.map @@ List.map loop in
-  { sfunc with func = { sfunc.func with body } }
+  let trans body =
+    let open Dnf in
+    let loop = function
+      | DCall (name, args) when not @@ is_par name ->
+        let r = ref None in
+        let call = name, args in
+        Hole (call, r)
+      | x -> Node x
+    in
+    let body = body |> List.map @@ List.map loop in
+    body
+  in
+  let sfunc = Fun.map ~f:trans sfunc in
+  sfunc
 ;;
 
 let to_dnf dnf =
