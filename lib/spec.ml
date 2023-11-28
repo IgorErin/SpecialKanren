@@ -12,7 +12,7 @@ let equal_item fst snd =
 
 let equal fst snd = List.length fst = List.length snd && List.for_all2 equal_item fst snd
 
-let create ~ident ~var =
+let create ~ident ~num ~var =
   let open Predicate in
-  { par = Par.Id.of_ident ~id:ident; var = Var.create ~cur:var }
+  { par = Par.Id.of_ident ~id:ident ~num; var = Var.create ~cur:var }
 ;;

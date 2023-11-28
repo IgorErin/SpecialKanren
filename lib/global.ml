@@ -46,7 +46,8 @@ let create_name Fun.{ func; spec } =
   let module P = Predicate in
   let postfix =
     spec
-    |> List.map (fun Spec.{ var; par } -> P.Var.name var ^ P.Par.Id.name par)
+    |> List.map (fun Spec.{ var; par } ->
+      (Int.to_string @@ P.Par.Id.num par) ^ P.Var.name var)
     |> String.concat "_"
   in
   Ident.name func.name ^ "_" ^ postfix
@@ -72,16 +73,15 @@ module Deps = struct
   let collect ~src =
     let create_spec args params =
       assert (List.length args = List.length params);
-      List.map2
-        (fun arg par ->
-          arg
-          |> Value.constr_get_opt
-          |> Option.map (fun (desc, _) ->
-            let par = Predicate.Par.Id.of_ident ~id:par in
-            let var = Predicate.Var.create ~cur:desc in
-            Spec.{ par; var }))
-        args
-        params
+      List.combine args params
+      |> List.mapi (fun id (arg, par) -> id, arg, par)
+      |> List.map (fun (num, arg, par) ->
+        arg
+        |> Value.constr_get_opt
+        |> Option.map (fun (desc, _) ->
+          let par = Predicate.Par.Id.of_ident ~id:par ~num in
+          let var = Predicate.Var.create ~cur:desc in
+          Spec.{ par; var }))
       |> List.filter_map (fun x -> x)
     in
     let fetch = function
@@ -103,8 +103,7 @@ end
 let step ~func =
   let fun_to_spec = Fun.canren_to_dnf func in
   let func = Local.run ~info:fun_to_spec |> trans in
-  let name = Ident.create_local @@ create_name func in
-  Fun.chname ~f:func ~name
+  func
 ;;
 
 let closer ~src ~tgt =
@@ -152,5 +151,9 @@ let closer ~src ~tgt =
 let get a = !a |> Core.Option.value_or_thunk ~default:(fun () -> failwith "Hole")
 
 let run ~(src : Outer.t) ~(targets : Canren.canren Fun.to_spec list) =
-  closer ~src ~tgt:targets |> List.map (Fun.map ~f:to_dnf)
+  closer ~src ~tgt:targets
+  |> List.map (Fun.map ~f:to_dnf)
+  |> List.map (fun f ->
+    let name = (fun x -> x |> create_name |> Ident.create_local) f in
+    Fun.chname ~f ~name)
 ;;

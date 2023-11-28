@@ -11,13 +11,17 @@ module Par = struct
   end
 
   module Id = struct
-    type t = { ident : Ident.t }
+    type t =
+      { ident : Ident.t
+      ; num : int
+      }
 
-    let of_ident ~id = { ident = id }
+    let of_ident ~id ~num = { ident = id; num }
     let by_ident { ident; _ } = Ident.same ident
     let ident { ident; _ } = ident
     let equal fst snd = Ident.same fst.ident snd.ident
-    let name { ident } = Ident.name ident
+    let name { ident; _ } = Ident.name ident
+    let num { num; _ } = num
   end
 end
 

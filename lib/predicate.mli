@@ -9,11 +9,12 @@ module Par : sig
   module Id : sig
     type t
 
-    val of_ident : id:Ident.t -> t
+    val of_ident : id:Ident.t -> num:int -> t
     val by_ident : t -> Ident.t -> bool
     val ident : t -> Ident.t
     val equal : t -> t -> bool
     val name : t -> string
+    val num : t -> int
   end
 end
 
