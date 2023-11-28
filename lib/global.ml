@@ -17,8 +17,9 @@ let trans sfunc =
   in
   let trans body =
     let open Dnf in
+    let has_const = List.exists (fun x -> x |> Value.constr_get_opt |> Option.is_some ) in 
     let loop = function
-      | DCall (name, args) when not @@ is_par name ->
+      | DCall (name, args) when not @@ is_par name && has_const args ->
         let r = ref None in
         let call = name, args in
         Hole (call, r)
