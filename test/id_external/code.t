@@ -35,9 +35,9 @@
   
   let id flag = conde [ flag === !!true &&& snd_id flag; flag === !!false &&& thd_id flag ]
   
-  let rec fve_id_0false_1false = failwith "Reduced"
-  and for_id_0true_1false = failwith "Reduced"
-  and snd_id_0true = for_id_0true_1false
+  let rec for_id_0true_1false = failwith "Reduced"
+  and fve_id_0false_1false = failwith "Reduced"
   and thd_id_0false = fve_id_0false_1false
-  and id_0false = thd_id_0false
+  and snd_id_0true = for_id_0true_1false
   and id_0true = snd_id_0true
+  and id_0false = thd_id_0false

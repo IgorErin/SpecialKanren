@@ -51,16 +51,16 @@
             ])
   ;;
   
-  let rec loe_2true x y =
+  let rec loe_2false x y =
+    Fresh.one (fun pred_x -> x === !!(S pred_x) &&& (y === !!O))
+    ||| Fresh.two (fun pred_x pred_y ->
+      x === !!(S pred_x) &&& (y === !!(S pred_y) &&& loe_2false pred_x pred_y))
+  
+  and loe_2true x y =
     x
     === !!O
     ||| Fresh.two (fun pred_x pred_y ->
       x === !!(S pred_x) &&& (y === !!(S pred_y) &&& loe_2true pred_x pred_y))
   
-  and loe_2false x y =
-    Fresh.one (fun pred_x -> x === !!(S pred_x) &&& (y === !!O))
-    ||| Fresh.two (fun pred_x pred_y ->
-      x === !!(S pred_x) &&& (y === !!(S pred_y) &&& loe_2false pred_x pred_y))
-  
-  and sub_2None x y = loe_2false y x
   and sub_2Some x y constarg0 = loe_2true y x &&& add y constarg0 x
+  and sub_2None x y = loe_2false y x

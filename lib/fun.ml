@@ -4,7 +4,7 @@ type 'a t =
   ; body : 'a
   }
 
-type 'a to_spec =
+type 'a spec =
   { func : 'a t
   ; spec : Spec.info
   }

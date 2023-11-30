@@ -745,6 +745,24 @@
           state === !!(St (i0, g0, c0, w0)) &&& (step === !!W &&& (i0 === w0)))
       ]
   
+  and checkAnswerInner_2St_3true a state constarg0 constarg1 constarg2 constarg3 =
+    a
+    === !!Nil
+    &&& (state === !!(St (constarg0, constarg1, constarg2, constarg3)))
+    ||| Fresh.three (fun x xs newState ->
+      a
+      === !!(Cons (x, xs))
+      &&& (checkStep_2true state x
+           &&& (step state x newState
+                &&& (checkState_1true newState
+                     &&& checkAnswerInner_2St_3true
+                           xs
+                           newState
+                           constarg0
+                           constarg1
+                           constarg2
+                           constarg3))))
+  
   and checkStep_0St_2false constarg0 constarg1 constarg2 constarg3 step =
     conde
       [ step === !!G &&& (constarg0 =/= constarg1)
@@ -781,24 +799,6 @@
                &&& (step state x newState &&& checkState_1false newState)))
       ; Fresh.two (fun x xs -> a === !!(Cons (x, xs)) &&& checkStep_2false state x)
       ]
-  
-  and checkAnswerInner_2St_3true a state constarg0 constarg1 constarg2 constarg3 =
-    a
-    === !!Nil
-    &&& (state === !!(St (constarg0, constarg1, constarg2, constarg3)))
-    ||| Fresh.three (fun x xs newState ->
-      a
-      === !!(Cons (x, xs))
-      &&& (checkStep_2true state x
-           &&& (step state x newState
-                &&& (checkState_1true newState
-                     &&& checkAnswerInner_2St_3true
-                           xs
-                           newState
-                           constarg0
-                           constarg1
-                           constarg2
-                           constarg3))))
   
   and checkState_1true s =
     Fresh.four (fun i0 g0 c0 w0 -> s === !!(St (i0, g0, c0, w0)) &&& (i0 === g0))
@@ -883,38 +883,6 @@
       ; constarg3 === constarg0 &&& (step === !!W)
       ]
   
-  and checkAnswerInner_1St_2St_3true
-    a
-    constarg0
-    constarg1
-    constarg2
-    constarg3
-    constarg4
-    constarg5
-    constarg6
-    constarg7
-    =
-    a
-    === !!Nil
-    &&& (constarg4
-         === constarg0
-         &&& (constarg5
-              === constarg1
-              &&& (constarg6 === constarg2 &&& (constarg7 === constarg3))))
-    ||| Fresh.three (fun x xs newState ->
-      a
-      === !!(Cons (x, xs))
-      &&& (checkStep_0St_2true constarg0 constarg1 constarg2 constarg3 x
-           &&& (step_0St constarg0 constarg1 constarg2 constarg3 x newState
-                &&& (checkState_1true newState
-                     &&& checkAnswerInner_2St_3true
-                           xs
-                           newState
-                           constarg4
-                           constarg5
-                           constarg6
-                           constarg7))))
-  
   and checkAnswerInner_1St_2St_3false
     a
     constarg0
@@ -959,8 +927,40 @@
           &&& checkStep_0St_2false constarg0 constarg1 constarg2 constarg3 x)
       ]
   
-  and checkAnswer_1false a =
-    checkAnswerInner_1St_2St_3false
+  and checkAnswerInner_1St_2St_3true
+    a
+    constarg0
+    constarg1
+    constarg2
+    constarg3
+    constarg4
+    constarg5
+    constarg6
+    constarg7
+    =
+    a
+    === !!Nil
+    &&& (constarg4
+         === constarg0
+         &&& (constarg5
+              === constarg1
+              &&& (constarg6 === constarg2 &&& (constarg7 === constarg3))))
+    ||| Fresh.three (fun x xs newState ->
+      a
+      === !!(Cons (x, xs))
+      &&& (checkStep_0St_2true constarg0 constarg1 constarg2 constarg3 x
+           &&& (step_0St constarg0 constarg1 constarg2 constarg3 x newState
+                &&& (checkState_1true newState
+                     &&& checkAnswerInner_2St_3true
+                           xs
+                           newState
+                           constarg4
+                           constarg5
+                           constarg6
+                           constarg7))))
+  
+  and checkAnswer_1true a =
+    checkAnswerInner_1St_2St_3true
       a
       !!true
       !!true
@@ -971,8 +971,8 @@
       !!false
       !!false
   
-  and checkAnswer_1true a =
-    checkAnswerInner_1St_2St_3true
+  and checkAnswer_1false a =
+    checkAnswerInner_1St_2St_3false
       a
       !!true
       !!true

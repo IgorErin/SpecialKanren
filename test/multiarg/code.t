@@ -36,8 +36,8 @@
   
   let rec spec_0false_1false_2Some constarg0 = failwith "Reduced"
   and spec_0true_1true_2None = failwith "Reduced"
+  and rel_0true = failwith "Reduced"
   
   and rel_0false =
     spec_0true_1true_2None ||| Fresh.one (fun x -> spec_0false_1false_2Some x)
-  
-  and rel_0true = failwith "Reduced"
+  ;;

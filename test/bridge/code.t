@@ -1998,14 +1998,6 @@
                &&& (checkPerson_2true state q &&& grForPerson_2false p q)))
       ]
   
-  and checkStep_2true state step =
-    Fresh.one (fun p -> step === !!(One p) &&& checkPerson_2true state p)
-    ||| Fresh.two (fun p q ->
-      step
-      === !!(Two (p, q))
-      &&& (checkPerson_2true state p
-           &&& (checkPerson_2true state q &&& grForPerson_2true p q)))
-  
   and grForPerson_2false x y =
     conde
       [ x === !!A &&& (y === !!A)
@@ -2033,6 +2025,45 @@
       ; person === !!C &&& (constarg3 =/= constarg0)
       ; person === !!D &&& (constarg4 =/= constarg0)
       ]
+  
+  and checkStep_2true state step =
+    Fresh.one (fun p -> step === !!(One p) &&& checkPerson_2true state p)
+    ||| Fresh.two (fun p q ->
+      step
+      === !!(Two (p, q))
+      &&& (checkPerson_2true state p
+           &&& (checkPerson_2true state q &&& grForPerson_2true p q)))
+  
+  and getAnswerInner_2St_3Some
+    answer
+    state
+    constarg0
+    constarg1
+    constarg2
+    constarg3
+    constarg4
+    constarg5
+    =
+    Fresh.five (fun x xs q14 t1 q12 ->
+      answer
+      === !!(Cons (x, xs))
+      &&& (checkStep_2true state x
+           &&& (step state x q14
+                &&& (getAnswerInner_2St_3Some
+                       xs
+                       q14
+                       constarg0
+                       constarg1
+                       constarg2
+                       constarg3
+                       constarg4
+                       t1
+                     &&& (getTime x q12 &&& add q12 t1 constarg5)))))
+    ||| (answer
+         === !!Nil
+         &&& (state
+              === !!(St (constarg0, constarg1, constarg2, constarg3, constarg4))
+              &&& (constarg5 === !!O)))
   
   and checkStep_0St_2false constarg0 constarg1 constarg2 constarg3 constarg4 step =
     conde
@@ -2119,37 +2150,6 @@
         &&& (state =/= !!(St (constarg0, constarg1, constarg2, constarg3, constarg4)))
       ]
   
-  and getAnswerInner_2St_3Some
-    answer
-    state
-    constarg0
-    constarg1
-    constarg2
-    constarg3
-    constarg4
-    constarg5
-    =
-    Fresh.five (fun x xs q14 t1 q12 ->
-      answer
-      === !!(Cons (x, xs))
-      &&& (checkStep_2true state x
-           &&& (step state x q14
-                &&& (getAnswerInner_2St_3Some
-                       xs
-                       q14
-                       constarg0
-                       constarg1
-                       constarg2
-                       constarg3
-                       constarg4
-                       t1
-                     &&& (getTime x q12 &&& add q12 t1 constarg5)))))
-    ||| (answer
-         === !!Nil
-         &&& (state
-              === !!(St (constarg0, constarg1, constarg2, constarg3, constarg4))
-              &&& (constarg5 === !!O)))
-  
   and step_0St constarg0 constarg1 constarg2 constarg3 constarg4 step q34 =
     Fresh.two (fun p q35 ->
       step
@@ -2173,47 +2173,6 @@
       &&& (checkPerson_0St_2true constarg0 constarg1 constarg2 constarg3 constarg4 p
            &&& (checkPerson_0St_2true constarg0 constarg1 constarg2 constarg3 constarg4 q
                 &&& grForPerson_2true p q)))
-  
-  and getAnswerInner_1St_2St_3Some
-    answer
-    constarg0
-    constarg1
-    constarg2
-    constarg3
-    constarg4
-    constarg5
-    constarg6
-    constarg7
-    constarg8
-    constarg9
-    constarg10
-    =
-    Fresh.five (fun x xs q14 t1 q12 ->
-      answer
-      === !!(Cons (x, xs))
-      &&& (checkStep_0St_2true constarg0 constarg1 constarg2 constarg3 constarg4 x
-           &&& (step_0St constarg0 constarg1 constarg2 constarg3 constarg4 x q14
-                &&& (getAnswerInner_2St_3Some
-                       xs
-                       q14
-                       constarg5
-                       constarg6
-                       constarg7
-                       constarg8
-                       constarg9
-                       t1
-                     &&& (getTime x q12 &&& add q12 t1 constarg10)))))
-    ||| (answer
-         === !!Nil
-         &&& (constarg5
-              === constarg0
-              &&& (constarg6
-                   === constarg1
-                   &&& (constarg7
-                        === constarg2
-                        &&& (constarg8
-                             === constarg3
-                             &&& (constarg9 === constarg4 &&& (constarg10 === !!O)))))))
   
   and getAnswerInner_1St_2St_3None
     answer
@@ -2257,19 +2216,46 @@
                        &&& (constarg8 =/= constarg3 &&& (constarg9 =/= constarg4)))))
       ]
   
-  and getAnswer_1None answer =
-    getAnswerInner_1St_2St_3None
+  and getAnswerInner_1St_2St_3Some
+    answer
+    constarg0
+    constarg1
+    constarg2
+    constarg3
+    constarg4
+    constarg5
+    constarg6
+    constarg7
+    constarg8
+    constarg9
+    constarg10
+    =
+    Fresh.five (fun x xs q14 t1 q12 ->
       answer
-      !!true
-      !!true
-      !!true
-      !!true
-      !!true
-      !!false
-      !!false
-      !!false
-      !!false
-      !!false
+      === !!(Cons (x, xs))
+      &&& (checkStep_0St_2true constarg0 constarg1 constarg2 constarg3 constarg4 x
+           &&& (step_0St constarg0 constarg1 constarg2 constarg3 constarg4 x q14
+                &&& (getAnswerInner_2St_3Some
+                       xs
+                       q14
+                       constarg5
+                       constarg6
+                       constarg7
+                       constarg8
+                       constarg9
+                       t1
+                     &&& (getTime x q12 &&& add q12 t1 constarg10)))))
+    ||| (answer
+         === !!Nil
+         &&& (constarg5
+              === constarg0
+              &&& (constarg6
+                   === constarg1
+                   &&& (constarg7
+                        === constarg2
+                        &&& (constarg8
+                             === constarg3
+                             &&& (constarg9 === constarg4 &&& (constarg10 === !!O)))))))
   
   and getAnswer_1Some answer constarg0 =
     getAnswerInner_1St_2St_3Some
@@ -2285,4 +2271,18 @@
       !!false
       !!false
       constarg0
+  
+  and getAnswer_1None answer =
+    getAnswerInner_1St_2St_3None
+      answer
+      !!true
+      !!true
+      !!true
+      !!true
+      !!true
+      !!false
+      !!false
+      !!false
+      !!false
+      !!false
   ;;

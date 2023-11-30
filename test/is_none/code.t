@@ -25,5 +25,5 @@
       ]
   ;;
   
-  let rec is_none_1None x = x === !!true
-  and is_none_1Some x constarg0 = x === !!false
+  let rec is_none_1Some x constarg0 = x === !!false
+  and is_none_1None x = x === !!true

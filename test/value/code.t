@@ -22,5 +22,5 @@
     conde [ opt === !!None &&& (result === default); opt === !!(Some result) ]
   ;;
   
-  let rec value_0None default result = result === default
-  and value_0Some constarg0 default result = constarg0 === result
+  let rec value_0Some constarg0 default result = constarg0 === result
+  and value_0None default result = result === default

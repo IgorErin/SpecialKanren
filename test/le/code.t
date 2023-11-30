@@ -28,14 +28,14 @@
       ]
   ;;
   
-  let rec le_2false x y =
+  let rec le_2true x y =
+    x
+    === !!O
+    ||| Fresh.two (fun x' y' -> x === !!(S x') &&& (y === !!(S y') &&& le_2true x' y'))
+  
+  and le_2false x y =
     x
     =/= !!O
     &&& (y === !!O)
     ||| Fresh.two (fun x' y' -> x === !!(S x') &&& (y === !!(S y') &&& le_2false x' y'))
-  
-  and le_2true x y =
-    x
-    === !!O
-    ||| Fresh.two (fun x' y' -> x === !!(S x') &&& (y === !!(S y') &&& le_2true x' y'))
   ;;

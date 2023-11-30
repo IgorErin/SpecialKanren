@@ -386,7 +386,7 @@ let fuse_fresh conj =
   |> List.rev
 ;;
 
-let run ~(info : _ Fun.to_spec) =
+let run ~(info : _ Fun.spec) =
   let func = info.func in
   let dnf = func.Fun.body in
   let new_var =

@@ -3,12 +3,11 @@ type value_dnf_item = (Value.t, Value.t) Dnf.item
 type fcall = Path.t * Value.t list
 type hole_ref = fcall option ref
 
-type node =
+type item =
   | Node of value_dnf_item
   | Hole of (fcall * hole_ref)
 
-type raw_dnf = node list list
-type gdnf = node list list
+type partial = item list list
 
 let trans sfunc =
   let is_par x =
@@ -17,9 +16,9 @@ let trans sfunc =
   in
   let trans body =
     let open Dnf in
-    let has_const = List.exists (fun x -> x |> Value.constr_get_opt |> Option.is_some ) in 
+    let has_const = List.exists (fun x -> x |> Value.constr_get_opt |> Option.is_some) in
     let loop = function
-      | DCall (name, args) when not @@ is_par name && has_const args ->
+      | DCall (name, args) when (not @@ is_par name) && has_const args ->
         let r = ref None in
         let call = name, args in
         Hole (call, r)
@@ -56,7 +55,7 @@ let create_name Fun.{ func; spec } =
 
 module Deps = struct
   type t =
-    { func : Canren.canren Fun.to_spec
+    { func : Canren.canren Fun.spec
     ; href : hole_ref
     ; args : Value.t list
     }
@@ -87,12 +86,18 @@ module Deps = struct
     in
     let fetch = function
       | Hole ((path, args), r) ->
-        let name = Path.head path in
-        let func = Outer.find ~src ~name in
+        let func =
+          let name = Path.head path in
+          Outer.find ~src ~name
+        in
         let spec = create_spec args func.params in
         let args = unwrap_arg args in
         let func = Fun.{ func; spec } in
-        Some { func; href = r; args }
+        (* TODO rework
+           we set the name and args before for simplisity *)
+        let name = create_name func |> Ident.create_local |> fun x -> Path.Pident x in
+        let () = r := Some (name, args) in
+        Some func
       | _ -> None
     in
     List.concat_map @@ List.filter_map fetch
@@ -107,52 +112,37 @@ let step ~func =
   func
 ;;
 
-let closer ~src ~tgt =
-  let set_call_self Deps.{ func; href; args } =
-    let name = create_name func in
-    let path = Path.Pident (Ident.create_local name) in
-    href := Some (path, args)
-  in
-  let try_set acc dep =
-    List.find_opt (fun item -> Fun.equal dep.Deps.func item) acc
-    |> function
-    | Some _ ->
-      set_call_self dep;
-      None
-    | _ -> Some dep
-  in
-  let filter acc deps = deps |> List.filter_map (fun hole -> try_set acc hole) in
-  let step x = step ~func:x in
-  let rec loop acc deps =
-    let deps = filter acc deps in
-    let acc, deps =
-      List.fold_left
-        (fun (items, deps) new_dep ->
-          let new_items =
-            new_dep
-            |> try_set items
-            |> Option.to_list
-            |> List.map (fun h -> step h.Deps.func)
-          in
-          let new_deps =
-            new_items |> List.concat_map (fun x -> Deps.get ~src ~body:x.Fun.func.body)
-          in
-          new_items @ items, new_deps @ deps)
-        (acc, deps)
-        deps
+module Closer : sig
+  val run : src:Outer.t -> tgt:Canren.canren Fun.spec list -> partial Fun.spec list
+end = struct
+  let run ~src ~tgt =
+    let exists_in acc dep = List.exists (Fun.equal dep) acc in
+    let filter acc deps = List.filter (fun dep -> not @@ exists_in acc dep) deps in
+    let compile acc deps =
+      deps
+      |> List.fold_left
+           (fun ((compiled, deps) as default) next ->
+             if exists_in compiled next
+             then default
+             else (
+               let next = step ~func:next in
+               let next_deps = Deps.get ~src ~body:next.func.body |> filter compiled in
+               next :: compiled, next_deps @ deps))
+           (acc, deps)
+      |> fun (acc, deps) -> acc, filter acc deps
     in
-    let deps = filter acc deps in
-    if Core.List.is_empty deps then acc else loop acc deps
-  in
-  let init = List.map step tgt in
-  let deps = init |> List.concat_map (fun res -> Deps.get ~src ~body:res.Fun.func.body) in
-  loop init deps
-;;
+    let rec loop acc deps =
+      let acc, deps = compile acc deps in
+      if Base.List.is_empty deps then acc else loop acc deps
+    in
+    loop [] tgt
+  ;;
+end
 
 let get a = !a |> Core.Option.value_or_thunk ~default:(fun () -> failwith "Hole")
 
-let run ~(src : Outer.t) ~(targets : Canren.canren Fun.to_spec list) =
-  closer ~src ~tgt:targets
+let run ~(src : Outer.t) ~(targets : Canren.canren Fun.spec list) =
+  Closer.run ~src ~tgt:targets
   |> List.map (Fun.map ~f:to_dnf)
   |> List.map (fun f ->
     let name = (fun x -> x |> create_name |> Ident.create_local) f in

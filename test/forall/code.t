@@ -33,14 +33,14 @@
       ]
   ;;
   
-  let rec for_allo_2false pred l =
-    Fresh.two (fun x xs ->
-      l === !!(Cons (x, xs)) &&& (pred x !!true &&& for_allo_2false pred xs))
-    ||| Fresh.two (fun x xs -> l === !!(Cons (x, xs)) &&& pred x !!false)
-  
-  and for_allo_2true pred l =
+  let rec for_allo_2true pred l =
     l
     === !!Nil
     ||| Fresh.two (fun x xs ->
       l === !!(Cons (x, xs)) &&& (pred x !!true &&& for_allo_2true pred xs))
+  
+  and for_allo_2false pred l =
+    Fresh.two (fun x xs ->
+      l === !!(Cons (x, xs)) &&& (pred x !!true &&& for_allo_2false pred xs))
+    ||| Fresh.two (fun x xs -> l === !!(Cons (x, xs)) &&& pred x !!false)
   ;;
