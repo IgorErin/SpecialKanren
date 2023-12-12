@@ -1,0 +1,166 @@
+% !TeX spellcheck = ru_RU
+% !TEX root = vkr.tex
+
+\newcommand{\NA}{---}
+
+В данном разделе приведены условия сравнительных экспериментов и их результаты.
+
+\subsection{Цель эксперимента}
+
+Целью эксперимента является сравнение производительности специализированных и исходных функций. 
+
+\subsection{Условия эксперимента}
+
+Для эксперимента были выбраны отношения: 
+is\_even\footnote{Код отношения is\_even 
+\url{https://github.com/IgorErin/SpecialKanren/blob/master/samples/is_even.ml} (Дата обращения 10.12.2023)}, sub\footnote{Код отношения sub : \url{https://github.com/IgorErin/SpecialKanren/blob/master/samples/sub.ml} (Дата обращения 10.12.2023)}, gcw\footnote{Код отношения gcw: \url{https://github.com/IgorErin/SpecialKanren/blob/master/samples/gcw.ml} (Дата обращения 10.12.2023)}, bridge\footnote{Исходный код отношения bridge \url{https://github.com/IgorErin/SpecialKanren/blob/master/samples/bridge.ml} (Дата обращения 10.12.2023)}.
+
+Эксперименты проведены на машине, имеющей следующие характеристики: Ubuntu 20.4, AMD Ryzen 5 5500U, 4.4GHz, DDR4 16GB RAM. Для измерения был использован ocaml-benchmark\footnote{Репозиторий ocaml-benchmark: \url{https://github.com/Chris00/ocaml-benchmark} \\ (Дата обращение 10.12.2023)}.
+
+\subsection{Результаты эксперимента}
+
+Результаты измерений приведены в следующих таблицах, где \verb|x| и \verb|spec_x| обозначают соответственно результаты исполнения функции с конструктором \verb|x| и исполнение специализированной по этому конструктору функции. В столбце \verb|Частота| обозначено количество исполнений за секунду. Большее --- лучше. Во всех случаях отклонение составило менее 3\%, вследствие чего оно не приводится. Каждый эксперимент состоял из 30 замеров.
+
+\begin{table}[H]
+\begin{center}
+\caption{Результаты измерений is\_even при получении первых ста ответов.} 
+    \newcolumntype{P}[1]{>{\centering\arraybackslash}p{#1}}
+    \begin{tabular}{|l|C{2cm}|C{2.7cm}|C{2.7cm}|}
+    \hline
+    Название & Частота & false & spec\_false  \\
+    \hline
+    \hline
+    \rowcolor{black!10} false      &  485  & -- & -30\% \\
+    \rowcolor{black!2}  spec\_false &  695   & 43\% & -- \\
+    \hline
+    \end{tabular}
+    \label{evenfalse}
+\end{center}
+\end{table}
+
+\begin{table}[H]
+\begin{center}
+\caption{Результаты измерений is\_even при получении первых ста ответов.} 
+    \newcolumntype{P}[1]{>{\centering\arraybackslash}p{#1}}
+    \begin{tabular}{|l|C{2cm}|C{2.7cm}|C{2.7cm}|}
+    \hline
+    Название & Частота & true & spec\_true  \\
+    \hline
+    \hline
+    \rowcolor{black!10} true      &  486  & -- & -29\% \\
+    \rowcolor{black!2}  spec\_true &  688   & 42\% & -- \\
+    \hline
+    \end{tabular}
+    \label{eventrue}
+\end{center}
+\end{table}
+
+\begin{table}[H]
+\begin{center}
+\caption{Результаты измерений sub при получении первых двадцати пяти ответов.} 
+    \newcolumntype{P}[1]{>{\centering\arraybackslash}p{#1}}
+    \begin{tabular}{|l|C{2cm}|C{2.7cm}|C{2.7cm}|}
+    \hline
+    Название & Частота & none & spec\_none  \\
+    \hline
+    \hline
+    \rowcolor{black!10} none      &  5598  & -- & -24\% \\
+    \rowcolor{black!2}  spec\_none &  7329   & 31\% & -- \\
+    \hline
+    \end{tabular}
+    \label{subnone}
+\end{center}
+\end{table}
+
+\begin{table}[H]
+\begin{center}
+\caption{Результаты измерений sub при получении первых двадцати пяти ответов. } 
+    \newcolumntype{P}[1]{>{\centering\arraybackslash}p{#1}}
+    \begin{tabular}{|l|C{2cm}|C{2.7cm}|C{2.7cm}|}
+    \hline
+    Название & Частота & some & spec\_some  \\
+    \hline
+    \hline
+    \rowcolor{black!10} some      &  1071  & -- & -4\% \\
+    \rowcolor{black!2}  spec\_some &  1113   & 4\% & -- \\
+    \hline
+    \end{tabular}
+    \label{subsome}
+\end{center}
+\end{table}
+
+\begin{table}[H]
+\begin{center}
+\caption{Результаты измерений gcw при получение первых ста ответов.} 
+    \newcolumntype{P}[1]{>{\centering\arraybackslash}p{#1}}
+    \begin{tabular}{|l|C{2cm}|C{2.7cm}|C{2.7cm}|}
+    \hline
+    Нзавние & Частота &  spec\_false & false  \\
+    \hline
+    \hline
+    \rowcolor{black!10} spec\_false &  366  & -- & -19\% \\
+    \rowcolor{black!2}  false      &  454   & 24\% & -- \\
+    \hline
+    \end{tabular}
+    \label{gcwfalse}
+\end{center}
+\end{table}
+
+\begin{table}[H]
+\begin{center}
+\caption{Результаты измерений gcw при получении первых ста ответов.} 
+    \newcolumntype{P}[1]{>{\centering\arraybackslash}p{#1}}
+    \begin{tabular}{|l|C{2cm}|C{2.7cm}|C{2.7cm}|}
+    \hline
+    Название & Частота & true & spec\_true  \\
+    \hline
+    \hline
+    \rowcolor{black!10} true      &  1.25 & -- & -52\% \\
+    \rowcolor{black!2}  spec\_true &  2.61 & 108\% & -- \\
+    \hline
+    \end{tabular}
+    \label{gcwtrue}
+\end{center}
+\end{table}
+
+\begin{table}[H]
+\begin{center}
+\caption{Результаты измерений bridge при получении первых ста ответов.} 
+    \newcolumntype{P}[1]{>{\centering\arraybackslash}p{#1}}
+    \begin{tabular}{|l|C{2cm}|C{2.7cm}|C{2.7cm}|}
+    \hline
+    Название & Частота &  none & spec\_none  \\
+    \hline
+    \hline
+    \rowcolor{black!10} none      &  421  & -- & -29\% \\
+    \rowcolor{black!2}  spec\_none &  596   & 42\% & -- \\
+    \hline
+    \end{tabular}
+    \label{brdigenone}
+\end{center}
+\end{table}
+
+Ввиду продолжительности исполнения отношения bridge, приведена величина, обратная \verb|Частоте|. То есть в столбце \verb|Скорость| обозначено среднее количество секунд за исполнение. Меньшее --- лучше.
+
+\begin{table}[H]
+\begin{center}
+\caption{Результаты измерений bridge при получении первого ответа.} 
+    \newcolumntype{P}[1]{>{\centering\arraybackslash}p{#1}}
+    \begin{tabular}{|l|C{2.3cm}|C{2.7cm}|C{2.7cm}|}
+    \hline
+    Нзавние & Скорость & some & spec\_some  \\
+    \hline
+    \hline
+    \rowcolor{black!10} some      &  15.8 & -- & -43\% \\
+    \rowcolor{black!2}  spec\_some &  9.03 & 75\% & -- \\
+    \hline
+    \end{tabular}
+    \label{brdigesome}
+\end{center}
+\end{table}
+
+\FloatBarrier
+
+\subsection{Выводы}
+
+Из приведенных результатов видно, что специализированные версии эффективнее всегда, за исключением эксперимента \ref{gcwfalse}, где проигрыш может быть объяснен большим количеством дублицированного кода вследствие использования ДНФ. Во многих конъюнктах создаются большое количество свежих имен, которые в исходной формуле аллоцировались единожды. Данный случай показывает необходимость слияния одинаковых частей конъюнктов, по крайней мере аллокации переменных.
