@@ -1,0 +1,58 @@
+% !TeX spellcheck = ru_RU
+% !TEX root = vkr.tex
+
+\newcolumntype{C}{ >{\centering\arraybackslash} m{4cm} }
+\newcommand\myvert[1]{\rotatebox[origin=c]{90}{#1}}
+\newcommand\myvertcell[1]{\multirowcell{5}{\myvert{#1}}}
+\newcommand\myvertcelll[1]{\multirowcell{4}{\myvert{#1}}}
+\newcommand\myvertcellN[2]{\multirowcell{#1}{\myvert{#2}}}
+
+
+\afterpage{%
+    \clearpage% Flush earlier floats (otherwise order might not be correct)
+    \thispagestyle{empty}% empty page style (?)
+    \begin{landscape}% Landscape page
+        \centering % Center table
+
+\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|}\hline
+%& \multicolumn{17}{c|}{} \\ \hline 
+\multirowcell{2}{Код модуля \\в составе \\ дисциплины,\\практики и т.п. }
+  &\myvertcellN{2}{Трудоёмкость}
+  & \multicolumn{10}{c|}{\tiny{Контактная работа обучающихся с преподавателем}} 
+  & \multicolumn{5}{c|}{\tiny{Самостоятельная работа}} 
+  & \myvertcellN{2}{\tiny Объем активных и интерактивных } 
+  \\ \cline{3-17}
+
+&& \myvertcellN{2}{лекции} 
+    &\myvertcellN{2}{семинары}
+    &\myvertcellN{2}{консультации}
+    &\myvertcellN{2}{\small практические  занятия }
+    &\myvertcellN{2}{\small лабораторные работы }
+    &\myvertcellN{2}{\small контрольные работы }
+    &\myvertcellN{2}{\small коллоквиумы }
+    &\myvertcellN{2}{\small текущий контроль }
+    &\myvertcellN{2}{\small промежуточная аттестация }
+    &\myvertcellN{2}{\small итоговая аттестация }
+    
+    &\myvertcellN{2}{\tiny под руководством    преподавателя}
+    &\myvertcellN{2}{\tiny в присутствии     преподавателя   }
+    &\myvertcellN{2}{\tiny с использованием    методических}
+    &\myvertcellN{2}{\small текущий контроль}
+    &\myvertcellN{2}{\tiny промежуточная аттестация } 
+    &     \\
+&& &&&&&&&&& &&&&&&\\
+&& &&&&&&&&& &&&&&&\\
+&& &&&&&&&&& &&&&&&\\ 
+&&&&&&&&&&& &&&&&&\\ 
+&&&&&&&&&&& &&&&&&\\ 
+&&&&&&&&&&& &&&&&&\\ \hline
+Семестр 3 & 2 &30  &&&&&&&&2   & &&&18 &&20 &10\\ \hline
+          &   &2-42&&&&&&&&2-25& &&&1-1&&1-1&\\ \hline
+Итого     & 2 &30  &&&&&&&&2   & &&&18 &&20 &10\\ \hline
+\end{tabular}
+
+        \captionof{table}{Если таблица очень большая, то можно её изобразить на отдельной портретной странице}
+    \end{landscape}
+    \clearpage% Flush page
+}
+
